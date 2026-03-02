@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>あそぼう！ゲームひろば</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+  }
+  h1 {
+    color: white;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    text-align: center;
+    margin-bottom: 0.5rem;
+    text-shadow: 2px 4px 8px rgba(0,0,0,0.3);
+  }
+  .subtitle {
+    color: rgba(255,255,255,0.85);
+    font-size: clamp(1rem, 3vw, 1.3rem);
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 2rem;
+    width: 100%;
+    max-width: 900px;
+  }
+  .card {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    text-align: center;
+    text-decoration: none;
+    color: inherit;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+  }
+  .card:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.25);
+  }
+  .card:active {
+    transform: translateY(-2px) scale(1.01);
+  }
+  .card-emoji {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    display: block;
+  }
+  .card-title {
+    font-size: 1.6rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+  }
+  .card-desc {
+    font-size: 1rem;
+    color: #666;
+    line-height: 1.5;
+  }
+  .card-1 { border-top: 6px solid #ff6b6b; }
+  .card-2 { border-top: 6px solid #51cf66; }
+  .card-3 { border-top: 6px solid #339af0; }
+  .footer {
+    margin-top: 3rem;
+    color: rgba(255,255,255,0.6);
+    font-size: 0.9rem;
+  }
+</style>
+</head>
+<body>
+<h1>🎮 あそぼう！</h1>
+<p class="subtitle">たのしいゲームがいっぱい！すきなゲームをえらんでね</p>
+
+<div class="cards">
+  <a href="moji-hanabi/" class="card card-1">
+    <span class="card-emoji">🎆</span>
+    <div class="card-title">もじはなび</div>
+    <div class="card-desc">キーをおすと もじが はなびみたいに とびはねる！</div>
+  </a>
+  <a href="kioku-match/" class="card card-2">
+    <span class="card-emoji">🃏</span>
+    <div class="card-title">きおくあわせ</div>
+    <div class="card-desc">おなじどうぶつの カードを みつけよう！ きおくりょくが ためされるよ</div>
+  </a>
+  <a href="emoji-awase/" class="card card-3">
+    <span class="card-emoji">🧩</span>
+    <div class="card-title">えもじパズル</div>
+    <div class="card-desc">スライドして どうぶつを ならべよう！ かんがえるパズルゲーム</div>
+  </a>
+</div>
+
+<p class="footer">made with ❤️ for my nephew</p>
+</body>
+</html>
