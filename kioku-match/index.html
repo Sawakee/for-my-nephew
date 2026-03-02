@@ -80,7 +80,8 @@ h1 {
    its own center, regardless of where it sits in the grid */
 .card-wrap.face-up .card-inner { transform: perspective(600px) rotateY(180deg); }
 .card-front, .card-back {
-  position: absolute; width: 100%; height: 100%;
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
   backface-visibility: hidden; border-radius: 16px;
   display: flex; align-items: center; justify-content: center;
 }
@@ -89,7 +90,7 @@ h1 {
   box-shadow: 0 6px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15);
   font-size: clamp(1.5rem, 5vw, 2.2rem);
   border: 3px solid rgba(255,255,255,0.2);
-  position: relative; overflow: hidden;
+  overflow: hidden;
 }
 .card-back::after {
   content: '✦ ✦ ✦\n✦ 🌟 ✦\n✦ ✦ ✦';
