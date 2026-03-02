@@ -3,84 +3,183 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>あそぼう！ゲームひろば</title>
+<title>あそぼう！ゲームひろば 🎮</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 2rem 1rem;
-  }
-  h1 {
-    color: white;
-    font-size: clamp(2rem, 6vw, 3.5rem);
-    text-align: center;
-    margin-bottom: 0.5rem;
-    text-shadow: 2px 4px 8px rgba(0,0,0,0.3);
-  }
-  .subtitle {
-    color: rgba(255,255,255,0.85);
-    font-size: clamp(1rem, 3vw, 1.3rem);
-    text-align: center;
-    margin-bottom: 3rem;
-  }
-  .cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 2rem;
-    width: 100%;
-    max-width: 900px;
-  }
-  .card {
-    background: white;
-    border-radius: 20px;
-    padding: 2rem;
-    text-align: center;
-    text-decoration: none;
-    color: inherit;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-    transition: transform 0.2s, box-shadow 0.2s;
-    cursor: pointer;
-  }
-  .card:hover {
-    transform: translateY(-6px) scale(1.02);
-    box-shadow: 0 16px 48px rgba(0,0,0,0.25);
-  }
-  .card:active {
-    transform: translateY(-2px) scale(1.01);
-  }
-  .card-emoji {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-    display: block;
-  }
-  .card-title {
-    font-size: 1.6rem;
-    font-weight: bold;
-    margin-bottom: 0.5rem;
-  }
-  .card-desc {
-    font-size: 1rem;
-    color: #666;
-    line-height: 1.5;
-  }
-  .card-1 { border-top: 6px solid #ff6b6b; }
-  .card-2 { border-top: 6px solid #51cf66; }
-  .card-3 { border-top: 6px solid #339af0; }
-  .footer {
-    margin-top: 3rem;
-    color: rgba(255,255,255,0.6);
-    font-size: 0.9rem;
-  }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2.5rem 1rem 4rem;
+  background: linear-gradient(-45deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #c77dff, #ff6bcd);
+  background-size: 400% 400%;
+  animation: gradMove 8s ease infinite;
+  overflow-x: hidden;
+  position: relative;
+}
+@keyframes gradMove {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.bg-float {
+  position: fixed;
+  pointer-events: none;
+  animation: floatUp linear infinite;
+  z-index: 0;
+  user-select: none;
+}
+@keyframes floatUp {
+  0%   { transform: translateY(110vh) rotate(0deg) scale(0.5); opacity: 0; }
+  5%   { opacity: 0.18; }
+  90%  { opacity: 0.18; }
+  100% { transform: translateY(-15vh) rotate(720deg) scale(1.2); opacity: 0; }
+}
+h1 {
+  position: relative; z-index: 1;
+  color: white;
+  font-size: clamp(3rem, 9vw, 6rem);
+  text-align: center;
+  margin-bottom: 0.6rem;
+  text-shadow:
+    4px 6px 0 rgba(0,0,0,0.15),
+    0 0 40px rgba(255,255,255,0.6);
+  animation: titleDance 2.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 24px rgba(255,255,255,0.5));
+}
+@keyframes titleDance {
+  0%,100% { transform: translateY(0) rotate(-1.5deg) scale(1); }
+  50%      { transform: translateY(-14px) rotate(1.5deg) scale(1.03); }
+}
+.subtitle {
+  position: relative; z-index: 1;
+  color: white;
+  font-size: clamp(1rem, 3.5vw, 1.5rem);
+  text-align: center;
+  margin-bottom: 3.5rem;
+  background: rgba(255,255,255,0.25);
+  backdrop-filter: blur(10px);
+  padding: 0.6rem 2rem;
+  border-radius: 40px;
+  border: 2px solid rgba(255,255,255,0.4);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+.cards {
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 2rem;
+  width: 100%;
+  max-width: 980px;
+}
+.card {
+  border-radius: 28px;
+  padding: 2.5rem 2rem 2rem;
+  text-align: center;
+  text-decoration: none;
+  color: white;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.25s;
+  cursor: pointer;
+  border: 3px solid rgba(255,255,255,0.35);
+}
+.card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 55%);
+  pointer-events: none;
+}
+.card::after {
+  content: '';
+  position: absolute; inset: -3px;
+  border-radius: 31px;
+  background: linear-gradient(135deg, #fff, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #c77dff, #fff);
+  z-index: -1;
+  animation: borderSpin 4s linear infinite;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.card:hover::after { opacity: 1; }
+@keyframes borderSpin {
+  to { filter: hue-rotate(360deg); }
+}
+.card:hover {
+  transform: translateY(-14px) scale(1.05) rotate(-1deg);
+  box-shadow: 0 28px 70px rgba(0,0,0,0.3);
+}
+.card:active {
+  transform: translateY(-5px) scale(1.02) rotate(0deg);
+}
+.card-1 {
+  background: linear-gradient(145deg, #ff6b6b, #ee5a24);
+  box-shadow: 0 10px 40px rgba(238,90,36,0.45);
+}
+.card-2 {
+  background: linear-gradient(145deg, #0be881, #0984e3);
+  box-shadow: 0 10px 40px rgba(9,132,227,0.4);
+}
+.card-3 {
+  background: linear-gradient(145deg, #a29bfe, #fd79a8);
+  box-shadow: 0 10px 40px rgba(162,155,254,0.45);
+}
+.card-emoji {
+  font-size: 5.5rem;
+  margin-bottom: 1rem;
+  display: block;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,0.25));
+}
+.card:nth-child(1) .card-emoji { animation: wobble1 2.5s ease-in-out infinite; }
+.card:nth-child(2) .card-emoji { animation: wobble2 2.8s ease-in-out infinite 0.4s; }
+.card:nth-child(3) .card-emoji { animation: wobble3 2.3s ease-in-out infinite 0.8s; }
+@keyframes wobble1 {
+  0%,100% { transform: rotate(-8deg) scale(1); }
+  50%      { transform: rotate(8deg) scale(1.15); }
+}
+@keyframes wobble2 {
+  0%,100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-12px) scale(1.15); }
+}
+@keyframes wobble3 {
+  0%,100% { transform: rotate(0deg) scale(1); }
+  25%      { transform: rotate(10deg) scale(1.1); }
+  75%      { transform: rotate(-10deg) scale(1.1); }
+}
+.card-title {
+  font-size: 1.9rem;
+  font-weight: 900;
+  margin-bottom: 0.6rem;
+  text-shadow: 0 3px 6px rgba(0,0,0,0.25);
+  letter-spacing: 0.02em;
+}
+.card-desc {
+  font-size: 1.05rem;
+  color: rgba(255,255,255,0.93);
+  line-height: 1.7;
+  font-weight: 500;
+}
+.footer {
+  position: relative; z-index: 1;
+  margin-top: 3.5rem;
+  color: white;
+  font-size: 1.1rem;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  animation: heartbeat 1.5s ease-in-out infinite;
+}
+@keyframes heartbeat {
+  0%,100% { transform: scale(1); }
+  14%      { transform: scale(1.15); }
+  28%      { transform: scale(1); }
+  42%      { transform: scale(1.1); }
+  56%      { transform: scale(1); }
+}
 </style>
 </head>
 <body>
 <h1>🎮 あそぼう！</h1>
-<p class="subtitle">たのしいゲームがいっぱい！すきなゲームをえらんでね</p>
+<p class="subtitle">✨ たのしいゲームがいっぱい！すきなゲームをえらんでね ✨</p>
 
 <div class="cards">
   <a href="moji-hanabi/" class="card card-1">
@@ -100,6 +199,23 @@
   </a>
 </div>
 
-<p class="footer">made with ❤️ for my nephew</p>
+<p class="footer">❤️ made with love for my nephew ❤️</p>
+
+<script>
+const BG_EMOJIS = ['⭐','🌈','✨','🎉','🌟','💫','🎊','🎵','🌸','🦋','🎈','🍭','🌺','🎀','🪄','🎠'];
+function spawnFloater() {
+  const el = document.createElement('span');
+  el.className = 'bg-float';
+  el.textContent = BG_EMOJIS[Math.floor(Math.random() * BG_EMOJIS.length)];
+  el.style.left = (Math.random() * 100) + 'vw';
+  const dur = 10 + Math.random() * 10;
+  el.style.animationDuration = dur + 's';
+  el.style.fontSize = (1.5 + Math.random() * 3) + 'rem';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), dur * 1000 + 500);
+}
+for (let i = 0; i < 18; i++) setTimeout(spawnFloater, i * 500);
+setInterval(spawnFloater, 900);
+</script>
 </body>
 </html>

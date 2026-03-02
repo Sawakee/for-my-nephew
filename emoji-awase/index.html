@@ -5,140 +5,177 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>えもじパズル 🧩</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
-    user-select: none;
-    padding: 1rem;
-  }
-  h1 {
-    color: white;
-    font-size: clamp(1.5rem, 5vw, 2.5rem);
-    text-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    margin-bottom: 0.5rem;
-  }
-  #stats {
-    color: rgba(255,255,255,0.9);
-    font-size: 1.1rem;
-    margin-bottom: 1.5rem;
-  }
-  .game-area {
-    display: flex;
-    gap: 2rem;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    justify-content: center;
-    margin-bottom: 1.5rem;
-  }
-  .board-section, .goal-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  .section-label {
-    color: rgba(255,255,255,0.9);
-    font-size: 0.95rem;
-    font-weight: bold;
-  }
-  #board, #goal-board {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
-    background: rgba(255,255,255,0.15);
-    border-radius: 16px;
-    padding: 10px;
-  }
-  .tile {
-    width: clamp(70px, 20vw, 100px);
-    height: clamp(70px, 20vw, 100px);
-    background: white;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: clamp(2rem, 7vw, 3.2rem);
-    cursor: pointer;
-    transition: transform 0.15s, box-shadow 0.15s;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    font-family: 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif;
-  }
-  .tile:hover:not(.empty):not(.goal-tile) {
-    transform: scale(1.05);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-  }
-  .tile.empty {
-    background: rgba(255,255,255,0.1);
-    box-shadow: none;
-    cursor: default;
-  }
-  .tile.movable {
-    cursor: pointer;
-    outline: 3px solid #FFD700;
-    outline-offset: -2px;
-  }
-  .tile.matched-pair {
-    background: #fff9c4;
-  }
-  .goal-tile {
-    width: clamp(40px, 11vw, 55px);
-    height: clamp(40px, 11vw, 55px);
-    font-size: clamp(1.2rem, 4vw, 1.8rem);
-    cursor: default;
-    background: rgba(255,255,255,0.7);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  }
-  .goal-tile.empty {
-    background: rgba(255,255,255,0.15);
-  }
-  #message {
-    color: white;
-    font-size: 1.4rem;
-    font-weight: bold;
-    min-height: 2rem;
-    text-align: center;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  }
-  #controls {
-    color: rgba(255,255,255,0.8);
-    font-size: 0.9rem;
-    text-align: center;
-    line-height: 1.8;
-  }
-  #restart-btn {
-    margin-top: 1rem;
-    padding: 0.6rem 1.5rem;
-    font-size: 1rem;
-    border: none;
-    border-radius: 20px;
-    background: white;
-    color: #f5576c;
-    font-weight: bold;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    display: none;
-  }
-  #restart-btn:hover { background: #fff0f3; }
-  #back-btn {
-    position: fixed;
-    top: 1rem;
-    left: 1rem;
-    background: rgba(255,255,255,0.2);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 0.4rem 0.8rem;
-    cursor: pointer;
-    font-size: 0.9rem;
-    text-decoration: none;
-  }
-  #back-btn:hover { background: rgba(255,255,255,0.35); }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  user-select: none; padding: 1rem;
+  background: linear-gradient(-45deg, #f7971e, #ffd200, #ff6a00, #ee0979, #ff6a00, #ffd200);
+  background-size: 400% 400%;
+  animation: bgAnim 9s ease infinite;
+  position: relative; overflow: hidden;
+}
+@keyframes bgAnim {
+  0%,100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+.bg-bubble {
+  position: fixed; border-radius: 50%;
+  pointer-events: none; z-index: 0;
+  animation: bubbleFloat ease-in-out infinite alternate;
+  opacity: 0.1;
+}
+@keyframes bubbleFloat {
+  from { transform: translateY(0) scale(1); }
+  to   { transform: translateY(-40px) scale(1.1); }
+}
+h1 {
+  position: relative; z-index: 1;
+  font-size: clamp(1.8rem, 6vw, 3rem);
+  font-weight: 900; margin-bottom: 0.5rem;
+  color: white;
+  text-shadow: 0 4px 8px rgba(0,0,0,0.25), 0 0 30px rgba(255,255,255,0.3);
+  animation: titlePop 2s ease-in-out infinite;
+}
+@keyframes titlePop {
+  0%,100% { transform: scale(1) rotate(-1deg); }
+  50%      { transform: scale(1.04) rotate(1deg); }
+}
+#stats {
+  position: relative; z-index: 1;
+  background: rgba(255,255,255,0.25);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255,255,255,0.4);
+  border-radius: 30px; padding: 0.4rem 1.5rem;
+  color: white; font-size: 1.1rem; font-weight: 700;
+  margin-bottom: 1.5rem;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.game-area {
+  position: relative; z-index: 1;
+  display: flex; gap: 2rem;
+  align-items: flex-start; flex-wrap: wrap; justify-content: center;
+  margin-bottom: 1.5rem;
+}
+.board-section, .goal-section {
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+}
+.section-label {
+  color: white; font-size: 1rem; font-weight: 900;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  background: rgba(0,0,0,0.2); border-radius: 20px;
+  padding: 0.2rem 0.9rem;
+}
+#board, #goal-board {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px; background: rgba(0,0,0,0.2);
+  border-radius: 20px; padding: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25), inset 0 2px 0 rgba(255,255,255,0.1);
+  border: 2px solid rgba(255,255,255,0.2);
+}
+.tile {
+  width: clamp(72px, 21vw, 105px);
+  height: clamp(72px, 21vw, 105px);
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(2.2rem, 7.5vw, 3.5rem);
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.18s;
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif;
+  border: 3px solid rgba(255,255,255,0.35);
+  position: relative; overflow: hidden;
+}
+.tile::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%);
+  pointer-events: none; border-radius: inherit;
+}
+/* Per-type colors */
+.tile.type-1 { background: linear-gradient(145deg, #fd9644, #e55039); box-shadow: 0 6px 16px rgba(229,80,57,0.45); }
+.tile.type-2 { background: linear-gradient(145deg, #ffd32a, #f9ca24); box-shadow: 0 6px 16px rgba(249,202,36,0.45); }
+.tile.type-3 { background: linear-gradient(145deg, #54a0ff, #2e86de); box-shadow: 0 6px 16px rgba(46,134,222,0.45); }
+.tile.type-4 { background: linear-gradient(145deg, #fd79a8, #e84393); box-shadow: 0 6px 16px rgba(232,67,147,0.45); }
+.tile.empty {
+  background: rgba(0,0,0,0.15);
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
+  cursor: default; border: 3px dashed rgba(255,255,255,0.2);
+}
+.tile.empty::before { display: none; }
+.tile.movable {
+  animation: movablePulse 1s ease-in-out infinite alternate;
+  cursor: pointer;
+}
+@keyframes movablePulse {
+  from { box-shadow: 0 0 0 0 rgba(255,255,255,0.6), 0 6px 16px rgba(0,0,0,0.3); filter: brightness(1); }
+  to   { box-shadow: 0 0 0 6px rgba(255,255,255,0.3), 0 8px 24px rgba(0,0,0,0.4); filter: brightness(1.15); }
+}
+.tile.movable:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+}
+.tile.slide-in {
+  animation: slideIn 0.18s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes slideIn {
+  0% { transform: scale(0.85); opacity: 0.6; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.goal-tile {
+  width: clamp(42px, 12vw, 60px);
+  height: clamp(42px, 12vw, 60px);
+  font-size: clamp(1.3rem, 4vw, 2rem);
+  cursor: default; border-radius: 10px;
+  border: 2px solid rgba(255,255,255,0.3);
+}
+.goal-tile.type-1 { background: rgba(253,150,68,0.55); }
+.goal-tile.type-2 { background: rgba(255,211,42,0.55); }
+.goal-tile.type-3 { background: rgba(84,160,255,0.55); }
+.goal-tile.type-4 { background: rgba(253,121,168,0.55); }
+.goal-tile.empty  { background: rgba(0,0,0,0.15); border-style: dashed; }
+.goal-tile::before { display: none; }
+#message {
+  position: relative; z-index: 1;
+  font-size: clamp(1.3rem, 4.5vw, 2rem);
+  font-weight: 900; min-height: 2.5rem;
+  text-align: center; color: white;
+  text-shadow: 0 0 20px rgba(255,255,255,0.6), 0 3px 6px rgba(0,0,0,0.3);
+  animation: msgPop 0.5s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes msgPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+#restart-btn {
+  position: relative; z-index: 1;
+  margin-top: 0.8rem; padding: 0.7rem 2rem;
+  font-size: 1.1rem; border: none; border-radius: 30px;
+  background: linear-gradient(135deg, #6bcb77, #4d96ff);
+  color: white; font-weight: 900; cursor: pointer;
+  box-shadow: 0 6px 20px rgba(77,150,255,0.4);
+  display: none; transition: transform 0.2s;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+#restart-btn:hover { transform: scale(1.08); }
+#controls {
+  position: relative; z-index: 1;
+  color: rgba(255,255,255,0.6); font-size: 0.85rem;
+  text-align: center; line-height: 2; margin-top: 0.5rem;
+}
+#back-btn {
+  position: fixed; top: 1rem; left: 1rem; z-index: 10;
+  background: rgba(255,255,255,0.2); backdrop-filter: blur(8px);
+  color: white; border: 1px solid rgba(255,255,255,0.35);
+  border-radius: 10px; padding: 0.4rem 0.9rem;
+  cursor: pointer; font-size: 0.9rem; text-decoration: none;
+  transition: background 0.2s;
+}
+#back-btn:hover { background: rgba(255,255,255,0.35); }
+#confetti-layer {
+  position: fixed; inset: 0; pointer-events: none; z-index: 100; display: none;
+}
 </style>
 </head>
 <body>
@@ -148,11 +185,11 @@
 
 <div class="game-area">
   <div class="board-section">
-    <div class="section-label">パズル</div>
+    <div class="section-label">🕹️ パズル</div>
     <div id="board"></div>
   </div>
   <div class="goal-section">
-    <div class="section-label">こたえ</div>
+    <div class="section-label">🎯 こたえ</div>
     <div id="goal-board"></div>
   </div>
 </div>
@@ -163,72 +200,73 @@
   タイルをクリックしてうごかそう！<br>
   ← → ↑ ↓ キーでもうごかせるよ
 </div>
+<canvas id="confetti-layer"></canvas>
 
 <script>
+// Background bubbles
+const BG_COLORS = ['#fff','#ffd93d','#ff6b6b','#74c0fc','#c77dff'];
+for (let i = 0; i < 12; i++) {
+  const b = document.createElement('div');
+  b.className = 'bg-bubble';
+  const size = 60 + Math.random()*120;
+  b.style.cssText = `
+    width:${size}px; height:${size}px;
+    left:${Math.random()*100}vw; top:${Math.random()*100}vh;
+    background:${BG_COLORS[Math.floor(Math.random()*BG_COLORS.length)]};
+    animation-duration:${3+Math.random()*5}s;
+    animation-delay:${Math.random()*4}s;
+  `;
+  document.body.appendChild(b);
+}
+
 const EMOJIS = ['', '🐶','🐱','🐭','🐹'];
-// Goal: [1,1,2,2,3,3,4,4,0]
 const GOAL = [1,1,2,2,3,3,4,4,0];
+const TYPE_CLASS = ['','type-1','type-2','type-3','type-4'];
 let board, moves, solved;
 
 function getBlank(b) { return b.indexOf(0); }
-
 function neighbors(idx) {
-  const r = Math.floor(idx / 3), c = idx % 3;
-  const res = [];
-  if (r > 0) res.push(idx - 3);
-  if (r < 2) res.push(idx + 3);
-  if (c > 0) res.push(idx - 1);
-  if (c < 2) res.push(idx + 1);
+  const r = Math.floor(idx/3), c = idx%3, res = [];
+  if (r>0) res.push(idx-3); if (r<2) res.push(idx+3);
+  if (c>0) res.push(idx-1); if (c<2) res.push(idx+1);
   return res;
 }
-
-function slide(b, from, to) {
-  const nb = [...b];
-  [nb[from], nb[to]] = [nb[to], nb[from]];
-  return nb;
-}
-
+function slide(b, from, to) { const nb=[...b]; [nb[from],nb[to]]=[nb[to],nb[from]]; return nb; }
 function shuffle(b) {
-  let cur = [...b];
-  for (let i = 0; i < 200; i++) {
-    const blank = getBlank(cur);
-    const ns = neighbors(blank);
-    const pick = ns[Math.floor(Math.random() * ns.length)];
-    cur = slide(cur, blank, pick);
+  let cur=[...b];
+  for (let i=0;i<200;i++) {
+    const blank=getBlank(cur), ns=neighbors(blank);
+    cur=slide(cur,blank,ns[Math.floor(Math.random()*ns.length)]);
   }
   return cur;
 }
-
-function isGoal(b) {
-  return b.every((v, i) => v === GOAL[i]);
-}
+function isGoal(b) { return b.every((v,i)=>v===GOAL[i]); }
 
 function renderGoal() {
   const gb = document.getElementById('goal-board');
   gb.innerHTML = '';
   GOAL.forEach(v => {
     const t = document.createElement('div');
-    t.className = 'tile goal-tile' + (v === 0 ? ' empty' : '');
-    t.textContent = v === 0 ? '' : EMOJIS[v];
+    t.className = 'tile goal-tile ' + (v===0 ? 'empty' : TYPE_CLASS[v]);
+    t.textContent = v===0 ? '' : EMOJIS[v];
     gb.appendChild(t);
   });
 }
 
-function render() {
+let lastMoved = -1;
+function render(movedIdx) {
   const boardEl = document.getElementById('board');
   boardEl.innerHTML = '';
   const blank = getBlank(board);
   const movable = neighbors(blank);
-
   board.forEach((v, i) => {
     const t = document.createElement('div');
-    t.className = 'tile' +
-      (v === 0 ? ' empty' : '') +
-      (movable.includes(i) && v !== 0 ? ' movable' : '');
-    t.textContent = v === 0 ? '' : EMOJIS[v];
-    if (movable.includes(i) && v !== 0) {
-      t.addEventListener('click', () => doMove(i));
-    }
+    t.className = 'tile ' +
+      (v===0 ? 'empty' : TYPE_CLASS[v]) +
+      (movable.includes(i) && v!==0 ? ' movable' : '') +
+      (i===movedIdx ? ' slide-in' : '');
+    t.textContent = v===0 ? '' : EMOJIS[v];
+    if (movable.includes(i) && v!==0) t.addEventListener('click', () => doMove(i));
     boardEl.appendChild(t);
   });
 }
@@ -240,11 +278,13 @@ function doMove(tileIdx) {
   board = slide(board, tileIdx, blank);
   moves++;
   document.getElementById('moves').textContent = moves;
-  render();
+  render(blank); // blank becomes where the tile slides to
   if (isGoal(board)) {
     solved = true;
-    document.getElementById('message').textContent = `🎉 クリア！ ${moves}てでできたよ！`;
+    const msg = document.getElementById('message');
+    msg.textContent = `🎉 クリア！ ${moves}てでできたよ！ 🎉`;
     document.getElementById('restart-btn').style.display = 'inline-block';
+    launchConfetti();
   }
 }
 
@@ -253,25 +293,61 @@ document.addEventListener('keydown', (e) => {
   e.preventDefault();
   if (solved) return;
   const blank = getBlank(board);
-  const r = Math.floor(blank / 3), c = blank % 3;
+  const r = Math.floor(blank/3), c = blank%3;
   let target = -1;
-  if (e.key === 'ArrowLeft' && c < 2) target = blank + 1;
-  else if (e.key === 'ArrowRight' && c > 0) target = blank - 1;
-  else if (e.key === 'ArrowUp' && r < 2) target = blank + 3;
-  else if (e.key === 'ArrowDown' && r > 0) target = blank - 3;
-  if (target >= 0) doMove(target);
+  if (e.key==='ArrowLeft'  && c<2) target = blank+1;
+  else if (e.key==='ArrowRight' && c>0) target = blank-1;
+  else if (e.key==='ArrowUp'    && r<2) target = blank+3;
+  else if (e.key==='ArrowDown'  && r>0) target = blank-3;
+  if (target>=0) doMove(target);
 });
 
+function launchConfetti() {
+  const cv = document.getElementById('confetti-layer');
+  cv.style.display = 'block';
+  cv.width = window.innerWidth; cv.height = window.innerHeight;
+  const ctx = cv.getContext('2d');
+  const ps = Array.from({length: 130}, () => ({
+    x: Math.random()*cv.width, y: -20,
+    vx: (Math.random()-0.5)*8, vy: 1+Math.random()*5,
+    r: 6+Math.random()*10, rot: Math.random()*Math.PI*2,
+    vrot: (Math.random()-0.5)*0.2,
+    color: `hsl(${Math.random()*360},90%,60%)`,
+    type: Math.floor(Math.random()*3)
+  }));
+  function draw() {
+    ctx.clearRect(0,0,cv.width,cv.height);
+    let alive = false;
+    ps.forEach(p => {
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.07; p.rot+=p.vrot;
+      if (p.y < cv.height+30) alive = true;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.fillStyle=p.color;
+      if (p.type===0) ctx.fillRect(-p.r/2,-p.r/3,p.r,p.r*0.6);
+      else if (p.type===1) { ctx.beginPath(); ctx.arc(0,0,p.r/2,0,Math.PI*2); ctx.fill(); }
+      else {
+        ctx.beginPath();
+        for (let j=0;j<5;j++) {
+          const a=(j*4*Math.PI/5)-Math.PI/2, b=(j*4*Math.PI/5+2*Math.PI/5)-Math.PI/2;
+          j===0 ? ctx.moveTo(Math.cos(a)*p.r,Math.sin(a)*p.r) : ctx.lineTo(Math.cos(a)*p.r,Math.sin(a)*p.r);
+          ctx.lineTo(Math.cos(b)*p.r*0.4,Math.sin(b)*p.r*0.4);
+        }
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    });
+    if (alive) requestAnimationFrame(draw);
+    else cv.style.display = 'none';
+  }
+  draw();
+}
+
 function init() {
-  do {
-    board = shuffle([...GOAL]);
-  } while (isGoal(board));
-  moves = 0;
-  solved = false;
+  do { board = shuffle([...GOAL]); } while (isGoal(board));
+  moves = 0; solved = false;
   document.getElementById('moves').textContent = '0';
   document.getElementById('message').textContent = '';
   document.getElementById('restart-btn').style.display = 'none';
-  render();
+  render(-1);
 }
 
 renderGoal();
