@@ -156,6 +156,13 @@ h1 {
   font-size: 0.85rem; text-align: center; line-height: 2;
   margin-top: 0.5rem;
 }
+.keyboard-hint { display: inline; }
+.touch-hint    { display: none; }
+@media (pointer: coarse) {
+  .keyboard-hint { display: none; }
+  .touch-hint    { display: inline; }
+  #board { gap: 0.6rem; }
+}
 #back-btn {
   position: fixed; top: 1rem; left: 1rem; z-index: 10;
   background: rgba(255,255,255,0.15);
@@ -184,8 +191,9 @@ h1 {
 <div id="message"></div>
 <button id="restart-btn" onclick="init()">もう一度あそぶ 🔄</button>
 <div id="controls">
-  ← → ↑ ↓ カーソル移動 &nbsp;|&nbsp; Enter / Space でめくる<br>
-  マウスクリックでもあそべるよ！
+  <span class="keyboard-hint">← → ↑ ↓ カーソル移動 &nbsp;|&nbsp; Enter / Space でめくる<br></span>
+  <span class="touch-hint">カードをタップしてめくろう！<br></span>
+  おなじどうぶつをさがしてね 🐾
 </div>
 <canvas id="confetti-layer"></canvas>
 

@@ -59,6 +59,13 @@ h1 {
   align-items: flex-start; flex-wrap: wrap; justify-content: center;
   margin-bottom: 1.5rem;
 }
+/* On small screens stack vertically and shrink goal board */
+@media screen and (max-width: 500px) {
+  .game-area { flex-direction: column; align-items: center; gap: 1rem; }
+  .goal-section { flex-direction: row; align-items: center; gap: 0.8rem; }
+  .goal-section .section-label { writing-mode: initial; }
+  #goal-board { padding: 8px; gap: 5px; }
+}
 .board-section, .goal-section {
   display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
 }
@@ -164,6 +171,12 @@ h1 {
   color: rgba(255,255,255,0.6); font-size: 0.85rem;
   text-align: center; line-height: 2; margin-top: 0.5rem;
 }
+.keyboard-hint { display: inline; }
+.touch-hint    { display: none; }
+@media (pointer: coarse) {
+  .keyboard-hint { display: none; }
+  .touch-hint    { display: inline; }
+}
 #back-btn {
   position: fixed; top: 1rem; left: 1rem; z-index: 10;
   background: rgba(255,255,255,0.2); backdrop-filter: blur(8px);
@@ -197,8 +210,8 @@ h1 {
 <div id="message"></div>
 <button id="restart-btn" onclick="init()">もう一度あそぶ 🔄</button>
 <div id="controls">
-  タイルをクリックしてうごかそう！<br>
-  ← → ↑ ↓ キーでもうごかせるよ
+  <span class="touch-hint">タイルをタップしてうごかそう！</span>
+  <span class="keyboard-hint">タイルをクリック or ← → ↑ ↓ キーでうごかせるよ</span>
 </div>
 <canvas id="confetti-layer"></canvas>
 
