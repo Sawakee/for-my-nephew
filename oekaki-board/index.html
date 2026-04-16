@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>おえかきボード 🎨</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center;
+  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  user-select: none; -webkit-user-select: none;
+  padding: 0.8rem;
+  background: linear-gradient(-45deg, #fceabb, #f8b500, #ff6a88, #ff99ac, #a1ffce, #faffd1);
+  background-size: 400% 400%;
+  animation: bgAnim 14s ease infinite;
+  overflow: hidden;
+  touch-action: none;
+}
+@keyframes bgAnim {
+  0%,100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+#back-btn {
+  position: fixed; top: 0.7rem; left: 0.7rem; z-index: 20;
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(10px);
+  color: #2a3f5f; border: 1px solid rgba(255,255,255,0.7);
+  border-radius: 10px; padding: 0.4rem 0.9rem;
+  cursor: pointer; font-size: 0.88rem; font-weight: 700;
+  text-decoration: none; transition: background 0.2s;
+}
+#back-btn:hover { background: rgba(255,255,255,0.75); }
+
+h1 {
+  font-size: clamp(1.4rem, 4.5vw, 2.2rem);
+  font-weight: 900;
+  animation: rainbowText 3s linear infinite;
+  text-shadow: 0 0 18px currentColor, 0 3px 6px rgba(0,0,0,0.2);
+  margin-top: 0.2rem; margin-bottom: 0.6rem;
+}
+@keyframes rainbowText {
+  0%   { color: #ff6b6b; }
+  16%  { color: #ffd93d; }
+  33%  { color: #6bcb77; }
+  50%  { color: #74c0fc; }
+  66%  { color: #c77dff; }
+  83%  { color: #ff79c6; }
+  100% { color: #ff6b6b; }
+}
+
+#canvas-wrap {
+  position: relative;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2),
+              inset 0 0 0 4px rgba(255,255,255,0.9);
+  border: 3px solid rgba(255,255,255,0.85);
+  overflow: hidden;
+  width: min(92vw, 920px);
+  flex: 1 1 auto;
+  max-height: calc(100vh - 220px);
+  min-height: 240px;
+}
+canvas {
+  display: block; width: 100%; height: 100%;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+#toolbar {
+  display: flex; flex-wrap: wrap;
+  justify-content: center; align-items: center;
+  gap: 0.5rem 0.8rem;
+  margin-top: 0.7rem;
+  padding: 0.6rem 0.8rem;
+  background: rgba(255,255,255,0.5);
+  backdrop-filter: blur(10px);
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,0.7);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+  width: min(96vw, 960px);
+}
+
+.palette, .sizes, .actions {
+  display: flex; align-items: center; gap: 0.35rem;
+  flex-wrap: wrap; justify-content: center;
+}
+
+.color-btn {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.9);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s;
+  padding: 0;
+}
+.color-btn:hover { transform: scale(1.12); }
+.color-btn.active {
+  border-color: #2a3f5f;
+  transform: scale(1.2);
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.8), 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.size-btn {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.85);
+  border: 2px solid rgba(255,255,255,0.7);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.12s, background 0.12s;
+}
+.size-btn:hover { transform: scale(1.08); }
+.size-btn.active {
+  background: #2a3f5f;
+  border-color: #2a3f5f;
+}
+.size-btn .dot {
+  background: #2a3f5f;
+  border-radius: 50%;
+}
+.size-btn.active .dot { background: #fff; }
+.size-btn[data-size="4"] .dot  { width: 6px;  height: 6px; }
+.size-btn[data-size="10"] .dot { width: 12px; height: 12px; }
+.size-btn[data-size="20"] .dot { width: 22px; height: 22px; }
+
+.action-btn {
+  padding: 0.5rem 0.9rem;
+  border-radius: 14px;
+  border: 2px solid rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.85);
+  color: #2a3f5f;
+  font-weight: 800; font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform 0.12s, background 0.12s;
+  font-family: inherit;
+}
+.action-btn:hover { transform: scale(1.06); background: rgba(255,255,255,1); }
+.action-btn:active { transform: scale(0.96); }
+.action-btn.active {
+  background: #2a3f5f;
+  color: #fff; border-color: #2a3f5f;
+}
+.action-btn.primary {
+  background: linear-gradient(135deg, #ffd93d, #ff6b6b);
+  color: #fff; border: none;
+  box-shadow: 0 4px 12px rgba(255,100,100,0.4);
+}
+
+.sep {
+  width: 1px; height: 28px;
+  background: rgba(0,0,0,0.15);
+  margin: 0 0.2rem;
+}
+
+@media (max-width: 480px) {
+  #toolbar { gap: 0.4rem 0.5rem; padding: 0.5rem 0.4rem; }
+  .color-btn { width: 30px; height: 30px; border-width: 2px; }
+  .size-btn { width: 34px; height: 34px; }
+  .action-btn { padding: 0.4rem 0.7rem; font-size: 0.82rem; }
+  #canvas-wrap { max-height: calc(100vh - 240px); }
+}
+</style>
+</head>
+<body>
+<a href="../" id="back-btn">← もどる</a>
+<h1>🎨 おえかきボード</h1>
+
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+</div>
+
+<div id="toolbar">
+  <div class="palette" id="palette"></div>
+  <div class="sep"></div>
+  <div class="sizes" id="sizes">
+    <button class="size-btn" data-size="4" title="ほそい"><span class="dot"></span></button>
+    <button class="size-btn active" data-size="10" title="ふつう"><span class="dot"></span></button>
+    <button class="size-btn" data-size="20" title="ふとい"><span class="dot"></span></button>
+  </div>
+  <div class="sep"></div>
+  <div class="actions">
+    <button class="action-btn" id="eraser-btn">けしゴム 🩹</button>
+    <button class="action-btn" id="clear-btn">ぜんけし 🧹</button>
+    <button class="action-btn primary" id="save-btn">ほぞん 💾</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('canvas-wrap');
+const palette = document.getElementById('palette');
+const sizes = document.getElementById('sizes');
+const eraserBtn = document.getElementById('eraser-btn');
+const clearBtn = document.getElementById('clear-btn');
+const saveBtn = document.getElementById('save-btn');
+
+const COLORS = [
+  '#000000', '#E74C3C', '#FF8C42', '#FFD93D',
+  '#6BCB77', '#4D96FF', '#A29BFE', '#FF79C6',
+  '#8B5E3C', '#FFFFFF'
+];
+
+let current = { color: '#000000', size: 10, erasing: false };
+let dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+
+// Build palette
+COLORS.forEach((c, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'color-btn' + (i === 0 ? ' active' : '');
+  btn.style.background = c;
+  btn.dataset.color = c;
+  btn.addEventListener('click', () => selectColor(c, btn));
+  palette.appendChild(btn);
+});
+
+function selectColor(c, btn) {
+  current.color = c;
+  current.erasing = false;
+  eraserBtn.classList.remove('active');
+  [...palette.children].forEach(el => el.classList.toggle('active', el === btn));
+}
+
+sizes.querySelectorAll('.size-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    current.size = Number(b.dataset.size);
+    sizes.querySelectorAll('.size-btn').forEach(x => x.classList.toggle('active', x === b));
+  });
+});
+
+eraserBtn.addEventListener('click', () => {
+  current.erasing = !current.erasing;
+  eraserBtn.classList.toggle('active', current.erasing);
+  if (current.erasing) {
+    [...palette.children].forEach(el => el.classList.remove('active'));
+  } else {
+    // reselect the currently-picked color
+    const btn = [...palette.children].find(el => el.dataset.color === current.color);
+    if (btn) btn.classList.add('active');
+  }
+});
+
+clearBtn.addEventListener('click', () => {
+  if (!confirm('ほんとうに ぜんぶ けしますか？')) return;
+  fillWhite();
+});
+
+saveBtn.addEventListener('click', () => {
+  canvas.toBlob(blob => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'oekaki.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }, 'image/png');
+});
+
+function resize() {
+  const rect = wrap.getBoundingClientRect();
+  // Backup current image (DOM CSS pixels)
+  let backup = null;
+  if (canvas.width && canvas.height) {
+    backup = document.createElement('canvas');
+    backup.width  = canvas.width;
+    backup.height = canvas.height;
+    backup.getContext('2d').drawImage(canvas, 0, 0);
+  }
+  dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  canvas.width  = Math.max(10, Math.floor(rect.width  * dpr));
+  canvas.height = Math.max(10, Math.floor(rect.height * dpr));
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  fillWhite();
+  if (backup) ctx.drawImage(backup, 0, 0, backup.width / dpr, backup.height / dpr);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+}
+
+function fillWhite() {
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+}
+
+// ====== Drawing ======
+let drawing = false;
+let lastX = 0, lastY = 0;
+
+function ptFromEvent(e) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top
+  };
+}
+
+function beginStroke(e) {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  drawing = true;
+  canvas.setPointerCapture(e.pointerId);
+  const p = ptFromEvent(e);
+  lastX = p.x; lastY = p.y;
+  // Draw a dot so a tap leaves a mark
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.fillStyle = current.erasing ? '#ffffff' : current.color;
+  ctx.arc(p.x, p.y, current.size / 2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function continueStroke(e) {
+  if (!drawing) return;
+  const p = ptFromEvent(e);
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = current.size;
+  ctx.strokeStyle = current.erasing ? '#ffffff' : current.color;
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+  ctx.restore();
+  lastX = p.x; lastY = p.y;
+}
+
+function endStroke(e) {
+  if (!drawing) return;
+  drawing = false;
+  try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+}
+
+canvas.addEventListener('pointerdown', beginStroke);
+canvas.addEventListener('pointermove', continueStroke);
+canvas.addEventListener('pointerup', endStroke);
+canvas.addEventListener('pointercancel', endStroke);
+canvas.addEventListener('pointerleave', e => { if (drawing) { /* keep drawing while captured */ }});
+
+// Prevent scrolling from accidental drags
+canvas.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+canvas.addEventListener('touchmove',  e => e.preventDefault(), { passive: false });
+
+window.addEventListener('resize', resize);
+resize();
+</script>
+</body>
+</html>

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シャボンだまぱちん 🫧</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  user-select: none; -webkit-user-select: none;
+  touch-action: none;
+  overflow: hidden;
+  background: linear-gradient(-45deg, #89f7fe, #66a6ff, #fbc2eb, #a6c1ee, #89f7fe, #c2e9fb);
+  background-size: 400% 400%;
+  animation: bgAnim 14s ease infinite;
+}
+@keyframes bgAnim {
+  0%,100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  position: fixed; top: 0; left: 0;
+  z-index: 0;
+}
+
+#ui-top {
+  position: fixed; top: 1rem; left: 0; right: 0; z-index: 5;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 0.4rem;
+  pointer-events: none;
+}
+
+#title {
+  font-size: clamp(1.5rem, 5.5vw, 2.6rem);
+  font-weight: 900; letter-spacing: 0.04em;
+  animation: rainbowGlow 3s linear infinite;
+  text-shadow: 0 0 25px currentColor, 0 3px 6px rgba(0,0,0,0.2);
+}
+@keyframes rainbowGlow {
+  0%   { color: #ff6b6b; }
+  16%  { color: #ffd93d; }
+  33%  { color: #6bcb77; }
+  50%  { color: #74c0fc; }
+  66%  { color: #c77dff; }
+  83%  { color: #ff79c6; }
+  100% { color: #ff6b6b; }
+}
+#hint {
+  color: rgba(40,40,60,0.75);
+  font-size: clamp(0.75rem, 2.4vw, 0.95rem);
+  background: rgba(255,255,255,0.5);
+  backdrop-filter: blur(10px);
+  padding: 0.32rem 1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.6);
+  font-weight: 600;
+}
+
+#back-btn {
+  position: fixed; top: 1rem; left: 1rem; z-index: 10;
+  background: rgba(255,255,255,0.5);
+  backdrop-filter: blur(10px);
+  color: #2a3f5f; border: 1px solid rgba(255,255,255,0.7);
+  border-radius: 10px; padding: 0.4rem 0.9rem;
+  cursor: pointer; font-size: 0.9rem; font-weight: 700;
+  text-decoration: none; transition: background 0.2s;
+}
+#back-btn:hover { background: rgba(255,255,255,0.7); }
+
+#count {
+  position: fixed; bottom: 1rem; right: 1rem; z-index: 5;
+  background: rgba(255,255,255,0.5);
+  backdrop-filter: blur(10px);
+  color: #2a3f5f;
+  font-size: 0.95rem; font-weight: 800;
+  padding: 0.4rem 0.95rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.7);
+  pointer-events: none;
+}
+
+#reset-btn {
+  position: fixed; bottom: 1rem; left: 1rem; z-index: 10;
+  background: rgba(255,255,255,0.5);
+  backdrop-filter: blur(10px);
+  color: #2a3f5f; border: 1px solid rgba(255,255,255,0.7);
+  border-radius: 10px; padding: 0.4rem 0.9rem;
+  cursor: pointer; font-size: 0.85rem; font-weight: 700;
+  transition: background 0.2s;
+}
+#reset-btn:hover { background: rgba(255,255,255,0.7); }
+#reset-btn:active { transform: scale(0.95); }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<a href="../" id="back-btn">← もどる</a>
+<div id="ui-top">
+  <div id="title">🫧 シャボンだまぱちん</div>
+  <div id="hint">シャボンだまを タップや なぞって ぱちんと わろう！</div>
+</div>
+<div id="count">わった かず: <span id="count-num">0</span></div>
+<button id="reset-btn">カウントをリセット</button>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const countNum = document.getElementById('count-num');
+const hintEl = document.getElementById('hint');
+const resetBtn = document.getElementById('reset-btn');
+
+const isTouch = navigator.maxTouchPoints > 0;
+if (isTouch) hintEl.textContent = 'シャボンだまを タップ！ なぞっても わせるよ！';
+
+let dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+function resize() {
+  dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  canvas.width  = Math.floor(window.innerWidth  * dpr);
+  canvas.height = Math.floor(window.innerHeight * dpr);
+  canvas.style.width  = window.innerWidth  + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ====== Audio ======
+let audioCtx = null;
+function ensureAudio() {
+  if (audioCtx) return audioCtx;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  } catch (_) { audioCtx = null; }
+  return audioCtx;
+}
+function playPop(freq) {
+  const ac = ensureAudio();
+  if (!ac) return;
+  if (ac.state === 'suspended') ac.resume();
+  const t = ac.currentTime;
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(freq, t);
+  osc.frequency.exponentialRampToValueAtTime(Math.max(80, freq * 0.3), t + 0.12);
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(0.22, t + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+  osc.connect(gain).connect(ac.destination);
+  osc.start(t);
+  osc.stop(t + 0.2);
+}
+
+// ====== State ======
+const bubbles = [];
+const drops = [];
+const MAX_BUBBLES = 34;
+let popped = 0;
+updateCount();
+
+function rand(a, b) { return a + Math.random() * (b - a); }
+
+// Soft hues (hue, lightness) pairs for bubble tints
+const HUES = [190, 210, 280, 320, 340, 40, 160];
+
+class Bubble {
+  constructor() {
+    const w = window.innerWidth;
+    this.r = rand(22, 58);
+    this.x = rand(this.r, w - this.r);
+    this.y = window.innerHeight + this.r + rand(0, 80);
+    this.vy = -rand(0.6, 1.6);
+    this.wobbleAmp = rand(0.4, 1.4);
+    this.wobbleFreq = rand(0.01, 0.03);
+    this.wobblePhase = Math.random() * Math.PI * 2;
+    this.hue = HUES[Math.floor(Math.random() * HUES.length)];
+    this.age = 0;
+    this.alive = true;
+  }
+  update() {
+    this.age++;
+    this.y += this.vy;
+    this.x += Math.sin(this.age * this.wobbleFreq + this.wobblePhase) * this.wobbleAmp;
+    // Pop naturally when it floats off screen
+    if (this.y + this.r < -10) this.alive = false;
+  }
+  draw() {
+    const { x, y, r, hue } = this;
+    ctx.save();
+    // body: soft gradient with transparency
+    const grad = ctx.createRadialGradient(x - r*0.35, y - r*0.35, r*0.1, x, y, r);
+    grad.addColorStop(0, `hsla(${hue}, 100%, 92%, 0.85)`);
+    grad.addColorStop(0.45, `hsla(${hue}, 85%, 78%, 0.35)`);
+    grad.addColorStop(1, `hsla(${hue}, 75%, 70%, 0.12)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    // rim
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = `hsla(${hue}, 80%, 85%, 0.75)`;
+    ctx.stroke();
+    // highlight
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(255,255,255,0.85)`;
+    ctx.ellipse(x - r*0.4, y - r*0.5, r*0.22, r*0.12, -0.5, 0, Math.PI*2);
+    ctx.fill();
+    // tiny shimmer
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(255,255,255,0.55)`;
+    ctx.arc(x - r*0.15, y - r*0.6, r*0.07, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+  contains(px, py) {
+    const dx = px - this.x, dy = py - this.y;
+    return dx*dx + dy*dy <= this.r * this.r;
+  }
+}
+
+class Drop {
+  constructor(x, y, vx, vy, hue, size) {
+    this.x = x; this.y = y;
+    this.vx = vx; this.vy = vy;
+    this.hue = hue;
+    this.size = size;
+    this.age = 0;
+    this.life = 30 + Math.random() * 20;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    this.vy += 0.15; this.vx *= 0.98;
+    this.age++;
+    return this.age < this.life;
+  }
+  draw() {
+    const alpha = Math.max(0, 1 - this.age / this.life);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = `hsla(${this.hue}, 90%, 85%, 0.9)`;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function pop(bubble) {
+  bubble.alive = false;
+  popped++;
+  updateCount();
+  playPop(380 + Math.random() * 280 + (60 - bubble.r) * 3);
+  const n = 8 + Math.floor(bubble.r / 8);
+  for (let i = 0; i < n; i++) {
+    const ang = (Math.PI * 2 * i) / n + Math.random() * 0.3;
+    const sp = 2 + Math.random() * 3;
+    drops.push(new Drop(
+      bubble.x, bubble.y,
+      Math.cos(ang) * sp, Math.sin(ang) * sp,
+      bubble.hue, 2 + Math.random() * 3
+    ));
+  }
+}
+
+function updateCount() {
+  countNum.textContent = popped;
+}
+
+// ====== Input ======
+function hitTest(px, py) {
+  for (let i = bubbles.length - 1; i >= 0; i--) {
+    const b = bubbles[i];
+    if (b.alive && b.contains(px, py)) { pop(b); return true; }
+  }
+  return false;
+}
+canvas.addEventListener('pointerdown', e => {
+  ensureAudio();
+  hitTest(e.clientX, e.clientY);
+});
+canvas.addEventListener('pointermove', e => {
+  if (e.buttons === 0 && e.pointerType === 'mouse') return;
+  hitTest(e.clientX, e.clientY);
+});
+
+resetBtn.addEventListener('click', () => {
+  popped = 0;
+  updateCount();
+});
+
+// ====== Loop ======
+let lastSpawn = 0;
+function frame(ts) {
+  if (!lastSpawn) lastSpawn = ts;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Spawn with probability scaled so roughly 1 per 180ms on average when below max
+  if (ts - lastSpawn > 140 && bubbles.filter(b => b.alive).length < MAX_BUBBLES) {
+    if (Math.random() < 0.85) bubbles.push(new Bubble());
+    lastSpawn = ts;
+  }
+  // Update+draw bubbles
+  for (let i = bubbles.length - 1; i >= 0; i--) {
+    const b = bubbles[i];
+    if (!b.alive) { bubbles.splice(i, 1); continue; }
+    b.update();
+    if (!b.alive) { bubbles.splice(i, 1); continue; }
+    b.draw();
+  }
+  // Update+draw drops
+  for (let i = drops.length - 1; i >= 0; i--) {
+    const d = drops[i];
+    if (!d.update()) { drops.splice(i, 1); continue; }
+    d.draw();
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

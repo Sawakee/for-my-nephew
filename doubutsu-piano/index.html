@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>どうぶつピアノ 🎹</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-start;
+  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  user-select: none; -webkit-user-select: none;
+  touch-action: manipulation;
+  padding: 0.8rem;
+  background: linear-gradient(-45deg, #3a1c71, #d76d77, #ffaf7b, #fcb69f, #a18cd1, #3a1c71);
+  background-size: 400% 400%;
+  animation: bgAnim 14s ease infinite;
+  overflow: hidden;
+}
+@keyframes bgAnim {
+  0%,100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+.note-bg {
+  position: fixed; pointer-events: none;
+  font-size: 1.8rem; opacity: 0.14;
+  animation: noteDrift linear infinite;
+  z-index: 0;
+}
+@keyframes noteDrift {
+  from { transform: translate(-10vw, 110vh) rotate(0); }
+  to   { transform: translate(110vw, -20vh) rotate(540deg); }
+}
+
+#back-btn {
+  position: fixed; top: 0.7rem; left: 0.7rem; z-index: 20;
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(10px);
+  color: white; border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 10px; padding: 0.4rem 0.9rem;
+  cursor: pointer; font-size: 0.9rem; font-weight: 700;
+  text-decoration: none; transition: background 0.2s;
+}
+#back-btn:hover { background: rgba(255,255,255,0.3); }
+
+h1 {
+  position: relative; z-index: 1;
+  font-size: clamp(1.6rem, 5.5vw, 2.6rem);
+  font-weight: 900;
+  animation: rainbowText 3s linear infinite;
+  text-shadow: 0 0 22px currentColor, 0 3px 6px rgba(0,0,0,0.3);
+  margin-top: 0.2rem; margin-bottom: 0.6rem;
+}
+@keyframes rainbowText {
+  0%   { color: #ff6b6b; }
+  16%  { color: #ffd93d; }
+  33%  { color: #6bcb77; }
+  50%  { color: #74c0fc; }
+  66%  { color: #c77dff; }
+  83%  { color: #ff79c6; }
+  100% { color: #ff6b6b; }
+}
+
+#mode-toggle {
+  position: relative; z-index: 1;
+  display: flex; gap: 0.2rem;
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255,255,255,0.3);
+  padding: 0.25rem;
+  border-radius: 999px;
+  margin-bottom: 1rem;
+}
+.mode-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.75);
+  padding: 0.55rem 1.3rem;
+  font-size: 1rem; font-weight: 800;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.25s;
+  font-family: inherit;
+}
+.mode-btn.active {
+  background: linear-gradient(135deg, #ffd93d, #ff6b6b);
+  color: white;
+  box-shadow: 0 4px 14px rgba(255,100,100,0.45);
+}
+
+#keyboard {
+  position: relative; z-index: 1;
+  display: flex; gap: 6px;
+  width: min(96vw, 880px);
+  height: clamp(260px, 52vh, 420px);
+  padding: 8px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 20px;
+  border: 3px solid rgba(255,255,255,0.25);
+  box-shadow: 0 14px 40px rgba(0,0,0,0.4);
+  backdrop-filter: blur(6px);
+}
+
+.key {
+  flex: 1 1 0;
+  position: relative;
+  border-radius: 14px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end;
+  padding: 0.5rem 0.2rem 1rem;
+  font-size: clamp(1.8rem, 5vw, 2.8rem);
+  cursor: pointer;
+  transition: transform 0.07s ease, filter 0.07s ease;
+  overflow: hidden;
+  color: white;
+  border: 2px solid rgba(255,255,255,0.35);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+.key .label-top {
+  position: absolute; top: 10%;
+  font-size: clamp(0.7rem, 2vw, 1rem);
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+.key::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.22), transparent 50%, rgba(0,0,0,0.08));
+  pointer-events: none;
+  border-radius: inherit;
+}
+.key.pressed {
+  transform: scale(0.94) translateY(4px);
+  filter: brightness(1.35) saturate(1.2);
+}
+.key.pressed::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 30px rgba(255,255,255,0.55);
+  pointer-events: none;
+}
+
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(255,255,255,0.8), rgba(255,255,255,0) 70%);
+  animation: rippleOut 0.6s ease-out forwards;
+  z-index: 30;
+}
+@keyframes rippleOut {
+  from { transform: translate(-50%,-50%) scale(0.2); opacity: 0.9; }
+  to   { transform: translate(-50%,-50%) scale(4);   opacity: 0; }
+}
+
+.k0 { background: linear-gradient(180deg, #ff6b6b, #c44569); }
+.k1 { background: linear-gradient(180deg, #ffa15c, #e67e22); }
+.k2 { background: linear-gradient(180deg, #ffd93d, #f39c12); }
+.k3 { background: linear-gradient(180deg, #6bcb77, #27ae60); }
+.k4 { background: linear-gradient(180deg, #4fd1c5, #0e9594); }
+.k5 { background: linear-gradient(180deg, #74c0fc, #4d96ff); }
+.k6 { background: linear-gradient(180deg, #a29bfe, #7f5af0); }
+.k7 { background: linear-gradient(180deg, #ff79c6, #e84393); }
+
+#hint {
+  position: relative; z-index: 1;
+  color: rgba(255,255,255,0.85);
+  font-size: clamp(0.85rem, 2.5vw, 1rem);
+  text-align: center; margin-top: 0.9rem;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  font-weight: 600;
+}
+
+@media (max-height: 540px) {
+  h1 { margin-bottom: 0.3rem; }
+  #keyboard { height: clamp(180px, 50vh, 280px); }
+}
+</style>
+</head>
+<body>
+<a href="../" id="back-btn">← もどる</a>
+<h1>🎹 どうぶつピアノ</h1>
+
+<div id="mode-toggle">
+  <button class="mode-btn active" data-mode="piano">🎹 ピアノ</button>
+  <button class="mode-btn" data-mode="animal">🐾 どうぶつ</button>
+</div>
+
+<div id="keyboard"></div>
+
+<div id="hint">けんばんを タップすると おとが なるよ！ モードを きりかえて あそんでね</div>
+
+<script>
+// ====== Background notes ======
+const NOTES_BG = ['🎵','🎶','♪','♫','♬'];
+for (let i = 0; i < 14; i++) {
+  const n = document.createElement('span');
+  n.className = 'note-bg';
+  n.textContent = NOTES_BG[i % NOTES_BG.length];
+  n.style.left = (Math.random() * 100) + 'vw';
+  n.style.animationDuration = (18 + Math.random() * 18) + 's';
+  n.style.animationDelay = (-Math.random() * 30) + 's';
+  n.style.fontSize = (1.2 + Math.random() * 2) + 'rem';
+  document.body.appendChild(n);
+}
+
+// ====== Audio ======
+let audioCtx = null;
+function ensureAudio() {
+  if (audioCtx) return audioCtx;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  } catch (_) { audioCtx = null; }
+  return audioCtx;
+}
+function unlockAudio() {
+  const ac = ensureAudio();
+  if (!ac) return;
+  if (ac.state === 'suspended') ac.resume();
+}
+
+// Piano: C4, D4, E4, F4, G4, A4, B4, C5
+const PIANO_FREQS = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
+const PIANO_LABELS = ['ド','レ','ミ','ファ','ソ','ラ','シ','ド'];
+
+// Animals
+const ANIMAL_EMOJIS = ['🐶','🐱','🐮','🐷','🐸','🐤','🦁','🐘'];
+const ANIMAL_NAMES  = ['いぬ','ねこ','うし','ぶた','かえる','ひよこ','らいおん','ぞう'];
+
+function playPiano(freq) {
+  const ac = ensureAudio(); if (!ac) return;
+  const t = ac.currentTime;
+  const master = ac.createGain();
+  master.gain.setValueAtTime(0.0001, t);
+  master.gain.exponentialRampToValueAtTime(0.4, t + 0.015);
+  master.gain.exponentialRampToValueAtTime(0.0005, t + 0.9);
+  master.connect(ac.destination);
+
+  // fundamental
+  const o1 = ac.createOscillator();
+  o1.type = 'sine'; o1.frequency.value = freq;
+  const g1 = ac.createGain(); g1.gain.value = 0.7;
+  o1.connect(g1).connect(master);
+  // 2nd harmonic
+  const o2 = ac.createOscillator();
+  o2.type = 'triangle'; o2.frequency.value = freq * 2;
+  const g2 = ac.createGain(); g2.gain.value = 0.18;
+  o2.connect(g2).connect(master);
+  // 3rd harmonic
+  const o3 = ac.createOscillator();
+  o3.type = 'sine'; o3.frequency.value = freq * 3;
+  const g3 = ac.createGain(); g3.gain.value = 0.08;
+  o3.connect(g3).connect(master);
+
+  const DUR = 0.95;
+  o1.start(t); o2.start(t); o3.start(t);
+  o1.stop(t + DUR); o2.stop(t + DUR); o3.stop(t + DUR);
+}
+
+function noiseBuffer(dur = 0.4) {
+  const ac = ensureAudio();
+  const len = Math.floor(ac.sampleRate * dur);
+  const buf = ac.createBuffer(1, len, ac.sampleRate);
+  const ch = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) ch[i] = Math.random() * 2 - 1;
+  return buf;
+}
+
+function playDog() {
+  const ac = ensureAudio(); if (!ac) return;
+  // Two quick woofs
+  [0, 0.18].forEach(offset => {
+    const t = ac.currentTime + offset;
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    const filt = ac.createBiquadFilter();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(280, t);
+    osc.frequency.exponentialRampToValueAtTime(90, t + 0.14);
+    filt.type = 'lowpass'; filt.frequency.value = 900;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.28, t + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    osc.connect(filt).connect(gain).connect(ac.destination);
+    osc.start(t); osc.stop(t + 0.22);
+  });
+}
+
+function playCat() {
+  const ac = ensureAudio(); if (!ac) return;
+  const t = ac.currentTime;
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(380, t);
+  osc.frequency.linearRampToValueAtTime(720, t + 0.2);
+  osc.frequency.linearRampToValueAtTime(520, t + 0.55);
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(0.25, t + 0.05);
+  gain.gain.setValueAtTime(0.25, t + 0.45);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+  osc.connect(gain).connect(ac.destination);
+  osc.start(t); osc.stop(t + 0.75);
+}
+
+function playCow() {
+  const ac = ensureAudio(); if (!ac) return;
+  const t = ac.currentTime;
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  // Vibrato via LFO
+  const lfo = ac.createOscillator();
+  const lfoGain = ac.createGain();
+  lfo.type = 'sine'; lfo.frequency.value = 5.5;
+  lfoGain.gain.value = 6;
+  lfo.connect(lfoGain).connect(osc.frequency);
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(150, t);
+  osc.frequency.linearRampToValueAtTime(110, t + 0.9);
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(0.32, t + 0.08);
+  gain.gain.setValueAtTime(0.32, t + 0.7);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+  osc.connect(gain).connect(ac.destination);
+  osc.start(t); lfo.start(t);
+  osc.stop(t + 1.15); lfo.stop(t + 1.15);
+}
+
+function playPig() {
+  const ac = ensureAudio(); if (!ac) return;
+  // Short nasal grunts: noise through bandpass + saw
+  [0, 0.22].forEach(offset => {
+    const t = ac.currentTime + offset;
+    const src = ac.createBufferSource();
+    src.buffer = noiseBuffer(0.22);
+    const filt = ac.createBiquadFilter();
+    filt.type = 'bandpass';
+    filt.frequency.setValueAtTime(420, t);
+    filt.frequency.linearRampToValueAtTime(200, t + 0.2);
+    filt.Q.value = 6;
+    const gain = ac.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.55, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    src.connect(filt).connect(gain).connect(ac.destination);
+    src.start(t); src.stop(t + 0.22);
+
+    // Add a saw thump for body
+    const o = ac.createOscillator();
+    const og = ac.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(180, t);
+    o.frequency.exponentialRampToValueAtTime(100, t + 0.18);
+    og.gain.setValueAtTime(0.0001, t);
+    og.gain.exponentialRampToValueAtTime(0.12, t + 0.02);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    o.connect(og).connect(ac.destination);
+    o.start(t); o.stop(t + 0.22);
+  });
+}
+
+function playFrog() {
+  const ac = ensureAudio(); if (!ac) return;
+  const t = ac.currentTime;
+  // Ribbit: two short buzzes
+  [0, 0.18].forEach((offset, idx) => {
+    const tt = t + offset;
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    const filt = ac.createBiquadFilter();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(120 + idx * 40, tt);
+    osc.frequency.linearRampToValueAtTime(90 + idx * 20, tt + 0.14);
+    filt.type = 'lowpass'; filt.frequency.value = 700;
+    gain.gain.setValueAtTime(0.0001, tt);
+    gain.gain.exponentialRampToValueAtTime(0.28, tt + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, tt + 0.16);
+    osc.connect(filt).connect(gain).connect(ac.destination);
+    osc.start(tt); osc.stop(tt + 0.2);
+  });
+}
+
+function playChick() {
+  const ac = ensureAudio(); if (!ac) return;
+  // 3 quick cheeps ascending
+  [0, 0.12, 0.24].forEach((offset, idx) => {
+    const t = ac.currentTime + offset;
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = 'square';
+    const base = 1400 + idx * 200;
+    osc.frequency.setValueAtTime(base, t);
+    osc.frequency.exponentialRampToValueAtTime(base + 500, t + 0.08);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.16, t + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    osc.connect(gain).connect(ac.destination);
+    osc.start(t); osc.stop(t + 0.1);
+  });
+}
+
+function playLion() {
+  const ac = ensureAudio(); if (!ac) return;
+  const t = ac.currentTime;
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  const filt = ac.createBiquadFilter();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(70, t);
+  osc.frequency.linearRampToValueAtTime(55, t + 1.1);
+  filt.type = 'lowpass';
+  filt.frequency.setValueAtTime(200, t);
+  filt.frequency.linearRampToValueAtTime(600, t + 0.25);
+  filt.frequency.linearRampToValueAtTime(200, t + 1.1);
+  filt.Q.value = 3;
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(0.45, t + 0.15);
+  gain.gain.setValueAtTime(0.45, t + 0.8);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+  osc.connect(filt).connect(gain).connect(ac.destination);
+  osc.start(t); osc.stop(t + 1.25);
+
+  // Growl noise overlay
+  const src = ac.createBufferSource();
+  src.buffer = noiseBuffer(1.1);
+  const nFilt = ac.createBiquadFilter();
+  nFilt.type = 'bandpass'; nFilt.frequency.value = 160; nFilt.Q.value = 4;
+  const nGain = ac.createGain();
+  nGain.gain.setValueAtTime(0.0001, t);
+  nGain.gain.exponentialRampToValueAtTime(0.08, t + 0.2);
+  nGain.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+  src.connect(nFilt).connect(nGain).connect(ac.destination);
+  src.start(t); src.stop(t + 1.15);
+}
+
+function playElephant() {
+  const ac = ensureAudio(); if (!ac) return;
+  const t = ac.currentTime;
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(220, t);
+  osc.frequency.linearRampToValueAtTime(560, t + 0.18);
+  osc.frequency.linearRampToValueAtTime(440, t + 0.4);
+  osc.frequency.linearRampToValueAtTime(200, t + 0.95);
+  const filt = ac.createBiquadFilter();
+  filt.type = 'bandpass'; filt.frequency.value = 700; filt.Q.value = 3;
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(0.32, t + 0.06);
+  gain.gain.setValueAtTime(0.32, t + 0.75);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.05);
+  osc.connect(filt).connect(gain).connect(ac.destination);
+  osc.start(t); osc.stop(t + 1.1);
+}
+
+const ANIMAL_PLAYERS = [playDog, playCat, playCow, playPig, playFrog, playChick, playLion, playElephant];
+
+// ====== UI ======
+const keyboard = document.getElementById('keyboard');
+const modeToggle = document.getElementById('mode-toggle');
+let mode = 'piano';
+const keyEls = [];
+
+function buildKeys() {
+  keyboard.innerHTML = '';
+  keyEls.length = 0;
+  for (let i = 0; i < 8; i++) {
+    const key = document.createElement('div');
+    key.className = 'key k' + i;
+    key.innerHTML = `
+      <div class="label-top">${PIANO_LABELS[i]}</div>
+      <div class="main">${ANIMAL_EMOJIS[i]}</div>
+    `;
+    key.dataset.i = i;
+    key.addEventListener('pointerdown', onKeyDown);
+    key.addEventListener('pointerup', onKeyUp);
+    key.addEventListener('pointerleave', onKeyUp);
+    key.addEventListener('pointercancel', onKeyUp);
+    keyboard.appendChild(key);
+    keyEls.push(key);
+  }
+  refreshLabels();
+}
+
+function refreshLabels() {
+  keyEls.forEach((k, i) => {
+    const main = k.querySelector('.main');
+    const top  = k.querySelector('.label-top');
+    if (mode === 'piano') {
+      main.textContent = ANIMAL_EMOJIS[i];
+      top.textContent  = PIANO_LABELS[i];
+    } else {
+      main.textContent = ANIMAL_EMOJIS[i];
+      top.textContent  = ANIMAL_NAMES[i];
+    }
+  });
+}
+
+function setMode(m) {
+  mode = m;
+  modeToggle.querySelectorAll('.mode-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === m);
+  });
+  refreshLabels();
+}
+modeToggle.addEventListener('click', e => {
+  const btn = e.target.closest('.mode-btn');
+  if (!btn) return;
+  unlockAudio();
+  setMode(btn.dataset.mode);
+});
+
+function onKeyDown(e) {
+  e.preventDefault();
+  unlockAudio();
+  const k = e.currentTarget;
+  const i = Number(k.dataset.i);
+  k.classList.add('pressed');
+  // attach pointerId so up even from different handler works
+  try { k.setPointerCapture(e.pointerId); } catch (_) {}
+  spawnRipple(k, e);
+  if (mode === 'piano') {
+    playPiano(PIANO_FREQS[i]);
+  } else {
+    ANIMAL_PLAYERS[i]();
+  }
+}
+function onKeyUp(e) {
+  const k = e.currentTarget;
+  k.classList.remove('pressed');
+  try { k.releasePointerCapture(e.pointerId); } catch (_) {}
+}
+
+function spawnRipple(key, e) {
+  const rect = key.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const r = document.createElement('span');
+  r.className = 'ripple';
+  r.style.left = x + 'px';
+  r.style.top = y + 'px';
+  r.style.width = '40px';
+  r.style.height = '40px';
+  key.appendChild(r);
+  setTimeout(() => r.remove(), 650);
+}
+
+// Keyboard support: 1-8 plays keys
+document.addEventListener('keydown', e => {
+  if (e.repeat) return;
+  const idx = '12345678'.indexOf(e.key);
+  if (idx < 0) return;
+  unlockAudio();
+  const k = keyEls[idx];
+  k.classList.add('pressed');
+  if (mode === 'piano') playPiano(PIANO_FREQS[idx]);
+  else ANIMAL_PLAYERS[idx]();
+});
+document.addEventListener('keyup', e => {
+  const idx = '12345678'.indexOf(e.key);
+  if (idx < 0) return;
+  keyEls[idx].classList.remove('pressed');
+});
+
+buildKeys();
+</script>
+</body>
+</html>

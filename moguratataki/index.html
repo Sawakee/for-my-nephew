@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>もぐらたたき 🔨</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-start;
+  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  user-select: none; -webkit-user-select: none;
+  padding: 1rem;
+  background: linear-gradient(-45deg, #56ab2f, #a8e063, #2b5876, #4e4376, #56ab2f, #a8e063);
+  background-size: 400% 400%;
+  animation: bgAnim 10s ease infinite;
+  position: relative; overflow: hidden;
+  touch-action: manipulation;
+}
+@keyframes bgAnim {
+  0%,100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+.cloud-bg {
+  position: fixed; pointer-events: none;
+  font-size: 2.5rem; opacity: 0.18;
+  animation: driftCloud linear infinite;
+  z-index: 0;
+}
+@keyframes driftCloud {
+  from { transform: translateX(-20vw); }
+  to   { transform: translateX(120vw); }
+}
+
+#back-btn {
+  position: fixed; top: 1rem; left: 1rem; z-index: 10;
+  background: rgba(255,255,255,0.18);
+  backdrop-filter: blur(8px);
+  color: white; border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 10px; padding: 0.4rem 0.9rem;
+  cursor: pointer; font-size: 0.9rem; text-decoration: none;
+  transition: background 0.2s;
+}
+#back-btn:hover { background: rgba(255,255,255,0.28); }
+
+h1 {
+  position: relative; z-index: 1;
+  font-size: clamp(1.8rem, 6vw, 3rem);
+  font-weight: 900; margin-top: 0.3rem; margin-bottom: 0.6rem;
+  animation: rainbowText 3s linear infinite;
+  text-shadow: 0 0 20px currentColor, 0 4px 8px rgba(0,0,0,0.3);
+  letter-spacing: 0.03em;
+}
+@keyframes rainbowText {
+  0%   { color: #ff6b6b; }
+  16%  { color: #ffd93d; }
+  33%  { color: #6bcb77; }
+  50%  { color: #74c0fc; }
+  66%  { color: #c77dff; }
+  83%  { color: #ff79c6; }
+  100% { color: #ff6b6b; }
+}
+
+#stats {
+  position: relative; z-index: 1;
+  display: flex; gap: 0.8rem; margin-bottom: 1rem;
+  flex-wrap: wrap; justify-content: center;
+}
+.stat-pill {
+  background: rgba(255,255,255,0.18);
+  backdrop-filter: blur(8px);
+  border: 2px solid rgba(255,255,255,0.35);
+  border-radius: 30px; padding: 0.4rem 1.1rem;
+  color: white; font-size: 1.05rem; font-weight: 800;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  min-width: 110px; text-align: center;
+}
+.stat-pill.time-low {
+  background: rgba(255,80,80,0.35);
+  border-color: rgba(255,200,200,0.7);
+  animation: pulse 0.5s ease-in-out infinite alternate;
+}
+@keyframes pulse {
+  from { transform: scale(1); }
+  to   { transform: scale(1.08); }
+}
+
+#board {
+  position: relative; z-index: 1;
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: clamp(0.6rem, 2vw, 1.2rem);
+  margin-bottom: 1.2rem;
+  max-width: 95vw;
+}
+
+.hole {
+  width: clamp(78px, 22vw, 130px);
+  height: clamp(78px, 22vw, 130px);
+  position: relative;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 30%, #3a1d0a 0%, #1a0a05 70%, #000 100%);
+  box-shadow:
+    inset 0 10px 20px rgba(0,0,0,0.9),
+    inset 0 -6px 12px rgba(120,70,30,0.3),
+    0 6px 14px rgba(0,0,0,0.4);
+  overflow: hidden;
+  cursor: pointer;
+}
+.hole::before {
+  content: '';
+  position: absolute;
+  left: -6px; right: -6px; bottom: -10px;
+  height: 30%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 0%, #6b4226 0%, #3e2717 50%, transparent 100%);
+  z-index: 2; pointer-events: none;
+}
+
+.mole {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 75%;
+  display: flex; align-items: flex-end; justify-content: center;
+  font-size: clamp(2.4rem, 7vw, 4rem);
+  transform: translateY(110%);
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 1; pointer-events: none;
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,0.5));
+}
+.mole.up {
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.mole.hit {
+  transform: translateY(0) scale(0.6) rotate(-15deg);
+  transition: transform 0.18s ease;
+  pointer-events: none;
+}
+.mole.down {
+  transform: translateY(110%);
+  pointer-events: none;
+}
+
+.btn-primary {
+  position: relative; z-index: 1;
+  padding: 0.8rem 2.2rem;
+  font-size: 1.15rem; border: none; border-radius: 30px;
+  background: linear-gradient(135deg, #ffd93d, #ff6b6b);
+  color: white; font-weight: 900; cursor: pointer;
+  box-shadow: 0 6px 20px rgba(255,100,100,0.45);
+  transition: transform 0.2s;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  letter-spacing: 0.02em;
+}
+.btn-primary:hover { transform: scale(1.08); }
+.btn-primary:active { transform: scale(0.95); }
+
+#message {
+  position: relative; z-index: 1;
+  font-size: clamp(1.1rem, 4vw, 1.6rem);
+  font-weight: 900; min-height: 2rem; margin-bottom: 0.6rem;
+  text-align: center; color: white;
+  text-shadow: 0 0 20px currentColor, 0 3px 6px rgba(0,0,0,0.3);
+}
+#message.win { animation: rainbowText 1.5s linear infinite; }
+
+.pop {
+  position: fixed;
+  font-size: 1.6rem;
+  pointer-events: none;
+  z-index: 50;
+  animation: popOut 0.6s ease-out forwards;
+}
+@keyframes popOut {
+  0%   { transform: translate(-50%,-50%) scale(0.3); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.4) rotate(var(--rot)); opacity: 0; }
+}
+
+.score-float {
+  position: fixed;
+  color: #ffd93d; font-weight: 900; font-size: 1.6rem;
+  pointer-events: none; z-index: 60;
+  text-shadow: 0 0 12px #ff6b6b, 0 2px 4px rgba(0,0,0,0.4);
+  animation: floatScore 0.8s ease-out forwards;
+}
+@keyframes floatScore {
+  0%   { transform: translate(-50%,-50%) scale(0.8); opacity: 1; }
+  100% { transform: translate(-50%, calc(-50% - 60px)) scale(1.3); opacity: 0; }
+}
+
+#big-overlay {
+  position: fixed; inset: 0; z-index: 80;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+  padding: 1rem;
+}
+#big-overlay.show { display: flex; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.panel {
+  background: linear-gradient(135deg, #ffd93d, #ff6b6b);
+  border-radius: 24px;
+  padding: 2rem 2.4rem;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  border: 3px solid rgba(255,255,255,0.4);
+  color: white;
+  max-width: 90vw;
+  animation: panelPop 0.5s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes panelPop {
+  from { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0); opacity: 1; }
+}
+.panel .result {
+  font-size: clamp(2rem, 7vw, 3.2rem);
+  font-weight: 900; margin-bottom: 0.3rem;
+  text-shadow: 0 3px 6px rgba(0,0,0,0.3);
+}
+.panel .score-line {
+  font-size: 1.2rem; font-weight: 700;
+  margin-bottom: 0.3rem;
+}
+.panel .best-line {
+  font-size: 1rem; color: rgba(255,255,255,0.9);
+  margin-bottom: 1.2rem;
+}
+.panel .best-line.new-best {
+  color: #fff;
+  animation: rainbowText 1s linear infinite;
+  font-weight: 900; font-size: 1.2rem;
+}
+
+#hint {
+  position: relative; z-index: 1;
+  color: rgba(255,255,255,0.75);
+  font-size: 0.92rem; text-align: center;
+  margin-top: 0.6rem; text-shadow: 0 2px 4px rgba(0,0,0,0.25);
+}
+</style>
+</head>
+<body>
+<a href="../" id="back-btn">← もどる</a>
+<h1>🔨 もぐらたたき</h1>
+
+<div id="stats">
+  <div class="stat-pill">スコア: <span id="score">0</span></div>
+  <div class="stat-pill" id="time-pill">のこり: <span id="time">30</span>びょう</div>
+  <div class="stat-pill">ベスト: <span id="best">0</span></div>
+</div>
+
+<div id="board"></div>
+
+<div id="message"></div>
+<button class="btn-primary" id="start-btn">スタート！ 🎮</button>
+<div id="hint">でてきた どうぶつを タップして たくさん たたこう！</div>
+
+<div id="big-overlay">
+  <div class="panel">
+    <div class="result">🎉 おわり！</div>
+    <div class="score-line">スコア: <span id="final-score">0</span></div>
+    <div class="best-line" id="best-line">ベスト: <span id="final-best">0</span></div>
+    <button class="btn-primary" id="again-btn">もういちど 🔁</button>
+  </div>
+</div>
+
+<script>
+// Background clouds
+const CLOUDS = ['☁️','⛅','🌤️'];
+for (let i = 0; i < 5; i++) {
+  const c = document.createElement('span');
+  c.className = 'cloud-bg';
+  c.textContent = CLOUDS[i % CLOUDS.length];
+  c.style.top = (5 + Math.random() * 70) + 'vh';
+  c.style.animationDuration = (30 + Math.random() * 30) + 's';
+  c.style.animationDelay = (-Math.random() * 30) + 's';
+  document.body.appendChild(c);
+}
+
+const ANIMALS = ['🐹','🐰','🐶','🐱','🐻','🐸','🦊','🐼'];
+const HOLE_COUNT = 9;
+const GAME_SECONDS = 30;
+const BEST_KEY = 'moguratataki_best_v1';
+
+const board = document.getElementById('board');
+const scoreEl = document.getElementById('score');
+const timeEl = document.getElementById('time');
+const bestEl = document.getElementById('best');
+const timePill = document.getElementById('time-pill');
+const startBtn = document.getElementById('start-btn');
+const againBtn = document.getElementById('again-btn');
+const messageEl = document.getElementById('message');
+const overlay = document.getElementById('big-overlay');
+const finalScoreEl = document.getElementById('final-score');
+const finalBestEl = document.getElementById('final-best');
+const bestLineEl = document.getElementById('best-line');
+
+let holes = [];
+let score = 0;
+let timeLeft = GAME_SECONDS;
+let running = false;
+let spawnTimer = null;
+let countdownTimer = null;
+
+function loadBest() {
+  const v = Number(localStorage.getItem(BEST_KEY)) || 0;
+  bestEl.textContent = v;
+  return v;
+}
+let best = loadBest();
+
+function buildBoard() {
+  board.innerHTML = '';
+  holes = [];
+  for (let i = 0; i < HOLE_COUNT; i++) {
+    const hole = document.createElement('div');
+    hole.className = 'hole';
+    const mole = document.createElement('div');
+    mole.className = 'mole';
+    mole.textContent = '🐹';
+    hole.appendChild(mole);
+    board.appendChild(hole);
+    mole.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      whack(i, e.clientX, e.clientY);
+    });
+    holes.push({ el: hole, mole, state: 'empty', retreatTimer: null });
+  }
+}
+
+function randomEmptyHole() {
+  const empties = holes
+    .map((h, i) => h.state === 'empty' ? i : -1)
+    .filter(i => i >= 0);
+  if (empties.length === 0) return -1;
+  return empties[Math.floor(Math.random() * empties.length)];
+}
+
+function activeMoleCount() {
+  return holes.filter(h => h.state === 'up' || h.state === 'rising').length;
+}
+
+function spawnMole() {
+  if (!running) return;
+  if (activeMoleCount() >= 2) return;
+  const i = randomEmptyHole();
+  if (i < 0) return;
+  const h = holes[i];
+  h.state = 'rising';
+  h.mole.textContent = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+  h.mole.classList.remove('hit', 'down');
+  h.mole.classList.add('up');
+  // becomes clickable as CSS transition runs
+  requestAnimationFrame(() => {
+    h.state = 'up';
+  });
+  const upTime = 700 + Math.random() * 700;
+  h.retreatTimer = setTimeout(() => retreat(i), upTime);
+}
+
+function retreat(i) {
+  const h = holes[i];
+  if (h.state !== 'up' && h.state !== 'rising') return;
+  h.state = 'descending';
+  h.mole.classList.remove('up');
+  h.mole.classList.add('down');
+  clearTimeout(h.retreatTimer);
+  h.retreatTimer = null;
+  setTimeout(() => {
+    if (h.state === 'descending') h.state = 'empty';
+  }, 240);
+}
+
+function whack(i, px, py) {
+  const h = holes[i];
+  if (!running) return;
+  if (h.state !== 'up' && h.state !== 'rising') return;
+  h.state = 'hit';
+  h.mole.classList.remove('up');
+  h.mole.classList.add('hit');
+  clearTimeout(h.retreatTimer);
+  h.retreatTimer = null;
+
+  score++;
+  scoreEl.textContent = score;
+  spawnPopEffect(px, py);
+  spawnScoreFloat(px, py);
+
+  setTimeout(() => {
+    h.mole.classList.remove('hit');
+    h.mole.classList.add('down');
+    setTimeout(() => {
+      h.state = 'empty';
+      h.mole.classList.remove('down');
+    }, 200);
+  }, 220);
+}
+
+function spawnPopEffect(cx, cy) {
+  const pieces = ['💥','✨','⭐','💫'];
+  const n = 7;
+  for (let k = 0; k < n; k++) {
+    const el = document.createElement('span');
+    el.className = 'pop';
+    el.textContent = pieces[Math.floor(Math.random() * pieces.length)];
+    const angle = (Math.PI * 2 * k) / n + Math.random() * 0.4;
+    const dist = 50 + Math.random() * 30;
+    el.style.left = cx + 'px';
+    el.style.top = cy + 'px';
+    el.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+    el.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+    el.style.setProperty('--rot', (Math.random() * 720 - 360) + 'deg');
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 650);
+  }
+}
+
+function spawnScoreFloat(cx, cy) {
+  const el = document.createElement('span');
+  el.className = 'score-float';
+  el.textContent = '+1';
+  el.style.left = cx + 'px';
+  el.style.top = cy + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 850);
+}
+
+function startGame() {
+  score = 0;
+  timeLeft = GAME_SECONDS;
+  scoreEl.textContent = '0';
+  timeEl.textContent = GAME_SECONDS;
+  timePill.classList.remove('time-low');
+  messageEl.textContent = '';
+  overlay.classList.remove('show');
+  startBtn.style.display = 'none';
+  buildBoard();
+  running = true;
+  spawnTimer = setInterval(spawnMole, 520);
+  countdownTimer = setInterval(tick, 1000);
+}
+
+function tick() {
+  timeLeft--;
+  timeEl.textContent = Math.max(0, timeLeft);
+  if (timeLeft <= 5) timePill.classList.add('time-low');
+  if (timeLeft <= 0) endGame();
+}
+
+function endGame() {
+  running = false;
+  clearInterval(spawnTimer);
+  clearInterval(countdownTimer);
+  spawnTimer = null; countdownTimer = null;
+  holes.forEach((h, i) => {
+    clearTimeout(h.retreatTimer);
+    h.retreatTimer = null;
+    h.mole.classList.remove('up', 'hit');
+    h.mole.classList.add('down');
+    h.state = 'empty';
+  });
+
+  const isNewBest = score > best;
+  if (isNewBest) {
+    best = score;
+    localStorage.setItem(BEST_KEY, String(best));
+    bestEl.textContent = best;
+  }
+  finalScoreEl.textContent = score;
+  finalBestEl.textContent = best;
+  bestLineEl.classList.toggle('new-best', isNewBest);
+  bestLineEl.innerHTML = isNewBest
+    ? `🏆 あたらしい きろく！ ${best} 🏆`
+    : `ベスト: <span id="final-best">${best}</span>`;
+  overlay.classList.add('show');
+  startBtn.style.display = 'inline-block';
+  startBtn.textContent = 'もういちど 🔁';
+}
+
+startBtn.addEventListener('click', startGame);
+againBtn.addEventListener('click', startGame);
+
+// Build initial empty board so layout is visible before first play
+buildBoard();
+</script>
+</body>
+</html>
