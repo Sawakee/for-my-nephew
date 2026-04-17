@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>おちものキャッチ 🧺</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  user-select: none; -webkit-user-select: none;
+  touch-action: none;
+  overflow: hidden;
+  background: linear-gradient(-45deg, #f6d365, #fda085, #fbc2eb, #a6c1ee, #fccb90, #d57eeb);
+  background-size: 400% 400%;
+  animation: bgAnim 14s ease infinite;
+}
+@keyframes bgAnim {
+  0%,100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+canvas {
+  display: block;
+  width: 100vw; height: 100vh;
+  position: fixed; top: 0; left: 0;
+  z-index: 0;
+}
+
+#back-btn {
+  position: fixed; top: 0.7rem; left: 0.7rem; z-index: 20;
+  background: rgba(255,255,255,0.5);
+  backdrop-filter: blur(10px);
+  color: #2a3f5f; border: 1px solid rgba(255,255,255,0.7);
+  border-radius: 10px; padding: 0.4rem 0.9rem;
+  cursor: pointer; font-size: 0.88rem; font-weight: 700;
+  text-decoration: none; transition: background 0.2s;
+}
+#back-btn:hover { background: rgba(255,255,255,0.75); }
+
+#hud {
+  position: fixed; top: 0.7rem; right: 0.7rem;
+  display: flex; gap: 0.5rem;
+  z-index: 15;
+}
+.pill {
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(10px);
+  color: #2a3f5f; border: 1px solid rgba(255,255,255,0.7);
+  border-radius: 18px; padding: 0.35rem 0.95rem;
+  font-size: 0.95rem; font-weight: 800;
+  min-width: 90px; text-align: center;
+}
+.pill .label {
+  display: block; font-size: 0.65rem; opacity: 0.7;
+  letter-spacing: 0.05em; font-weight: 700;
+}
+
+#title-bar {
+  position: fixed; top: 0.7rem; left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  font-size: clamp(1.2rem, 4vw, 1.9rem);
+  font-weight: 900;
+  animation: rainbowText 3s linear infinite;
+  text-shadow: 0 0 18px currentColor, 0 3px 6px rgba(0,0,0,0.25);
+  pointer-events: none;
+  white-space: nowrap;
+}
+@keyframes rainbowText {
+  0%   { color: #ff6b6b; }
+  16%  { color: #ffd93d; }
+  33%  { color: #6bcb77; }
+  50%  { color: #74c0fc; }
+  66%  { color: #c77dff; }
+  83%  { color: #ff79c6; }
+  100% { color: #ff6b6b; }
+}
+
+#overlay {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(4px);
+  padding: 1rem;
+}
+#overlay.hidden { display: none; }
+
+.panel {
+  background: linear-gradient(135deg, #ffd93d, #ff6b6b);
+  border-radius: 24px;
+  padding: 1.8rem 2.2rem;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  border: 3px solid rgba(255,255,255,0.4);
+  color: white;
+  max-width: 90vw;
+  animation: panelPop 0.5s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes panelPop {
+  from { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0); opacity: 1; }
+}
+.panel .big {
+  font-size: clamp(1.8rem, 6vw, 2.8rem);
+  font-weight: 900; margin-bottom: 0.3rem;
+  text-shadow: 0 3px 6px rgba(0,0,0,0.3);
+}
+.panel .stat {
+  font-size: 1.1rem; font-weight: 700;
+  margin-bottom: 0.2rem;
+}
+.panel .new-best {
+  animation: rainbowText 1s linear infinite;
+  font-weight: 900;
+}
+.btn-primary {
+  margin-top: 1rem;
+  padding: 0.7rem 1.9rem;
+  font-size: 1.05rem; border: none; border-radius: 30px;
+  background: white;
+  color: #e84393; font-weight: 900; cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+  transition: transform 0.2s;
+  font-family: inherit;
+}
+.btn-primary:hover { transform: scale(1.08); }
+.btn-primary:active { transform: scale(0.95); }
+
+.panel .hint {
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<a href="../" id="back-btn">← もどる</a>
+<div id="title-bar">🧺 おちものキャッチ</div>
+<div id="hud">
+  <div class="pill"><span class="label">スコア</span><span id="score">0</span></div>
+  <div class="pill"><span class="label">いのち</span><span id="lives">❤️❤️❤️</span></div>
+  <div class="pill"><span class="label">ベスト</span><span id="best">0</span></div>
+</div>
+
+<div id="overlay">
+  <div class="panel">
+    <div class="big" id="overlay-title">🧺 じゅんびOK？</div>
+    <div class="stat" id="overlay-score" style="display:none;">スコア: <span id="overlay-score-val">0</span></div>
+    <div class="stat" id="overlay-best"></div>
+    <div class="hint">バケツを うごかして くだものを うけとめよう！<br>💣 バクダンは さけてね！</div>
+    <button class="btn-primary" id="start-btn">スタート！ 🎮</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const livesEl = document.getElementById('lives');
+const bestEl  = document.getElementById('best');
+const overlay = document.getElementById('overlay');
+const overlayTitle = document.getElementById('overlay-title');
+const overlayScore = document.getElementById('overlay-score');
+const overlayScoreVal = document.getElementById('overlay-score-val');
+const overlayBest = document.getElementById('overlay-best');
+const startBtn = document.getElementById('start-btn');
+
+const BEST_KEY = 'ochimono_catch_best_v1';
+const FRUITS = ['🍎','🍊','🍋','🍌','🍇','🍓','🥝','🍑','🍍','🥭','🍒'];
+const BOMB = '💣';
+const BAD_PROB = 0.13; // 13% chance an item is a bomb
+
+let dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+let W = 0, H = 0;
+function resize() {
+  dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width  = Math.floor(W * dpr);
+  canvas.height = Math.floor(H * dpr);
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // Keep bucket on screen
+  if (bucket) bucket.x = Math.min(Math.max(bucket.x, bucket.w/2), W - bucket.w/2);
+}
+window.addEventListener('resize', resize);
+
+// ====== Audio ======
+let audioCtx = null;
+function ensureAudio() {
+  if (audioCtx) return audioCtx;
+  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+  catch(_) { audioCtx = null; }
+  return audioCtx;
+}
+function unlockAudio() { const ac = ensureAudio(); if (ac && ac.state === 'suspended') ac.resume(); }
+function beep(freq, durMs, vol = 0.2, type = 'sine') {
+  const ac = ensureAudio(); if (!ac) return;
+  const t = ac.currentTime;
+  const osc = ac.createOscillator();
+  const g = ac.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + durMs/1000);
+  osc.connect(g).connect(ac.destination);
+  osc.start(t); osc.stop(t + durMs/1000 + 0.05);
+}
+function playCatch() { beep(660, 140, 0.18, 'sine'); setTimeout(() => beep(880, 140, 0.16, 'sine'), 70); }
+function playMiss()  { beep(180, 300, 0.22, 'sawtooth'); }
+function playBomb()  {
+  const ac = ensureAudio(); if (!ac) return;
+  const t = ac.currentTime;
+  const src = ac.createBufferSource();
+  const len = Math.floor(ac.sampleRate * 0.4);
+  const buf = ac.createBuffer(1, len, ac.sampleRate);
+  const ch = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) ch[i] = (Math.random()*2-1) * (1 - i/len);
+  src.buffer = buf;
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.35, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+  const f = ac.createBiquadFilter();
+  f.type = 'lowpass'; f.frequency.value = 400;
+  src.connect(f).connect(g).connect(ac.destination);
+  src.start(t);
+}
+
+// ====== State ======
+let bucket = null;
+const items = [];
+const sparks = [];
+let score = 0;
+let lives = 3;
+let running = false;
+let spawnCooldown = 0;
+let elapsedFrames = 0;
+let best = Number(localStorage.getItem(BEST_KEY)) || 0;
+bestEl.textContent = best;
+
+function resetBucket() {
+  const w = Math.max(80, Math.min(150, W * 0.16));
+  bucket = {
+    x: W / 2,
+    y: H - 70,
+    w,
+    h: 60,
+    vx: 0,
+    targetX: W / 2
+  };
+}
+
+function updateLivesUI() {
+  livesEl.textContent = '❤️'.repeat(lives) + '🤍'.repeat(Math.max(0, 3 - lives));
+}
+
+function startGame() {
+  unlockAudio();
+  score = 0; lives = 3;
+  items.length = 0; sparks.length = 0;
+  elapsedFrames = 0;
+  spawnCooldown = 40;
+  scoreEl.textContent = '0';
+  updateLivesUI();
+  resetBucket();
+  overlay.classList.add('hidden');
+  running = true;
+}
+
+function endGame() {
+  running = false;
+  const newBest = score > best;
+  if (newBest) {
+    best = score;
+    localStorage.setItem(BEST_KEY, String(best));
+    bestEl.textContent = best;
+  }
+  overlayTitle.textContent = '🎮 ゲームおわり！';
+  overlayScore.style.display = '';
+  overlayScoreVal.textContent = score;
+  overlayBest.innerHTML = newBest
+    ? '<span class="new-best">🏆 あたらしい きろく！ ' + best + ' 🏆</span>'
+    : 'ベスト: ' + best;
+  startBtn.textContent = 'もういちど 🔁';
+  overlay.classList.remove('hidden');
+}
+
+startBtn.addEventListener('click', startGame);
+
+// ====== Input ======
+const keys = { left: false, right: false };
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+  if (e.key === 'ArrowRight'|| e.key === 'd' || e.key === 'D') keys.right = true;
+  if ((e.key === 'Enter' || e.key === ' ') && !running) { e.preventDefault(); startGame(); }
+});
+document.addEventListener('keyup', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+  if (e.key === 'ArrowRight'|| e.key === 'd' || e.key === 'D') keys.right = false;
+});
+
+let pointerDown = false;
+canvas.addEventListener('pointerdown', e => {
+  pointerDown = true;
+  if (bucket) bucket.targetX = e.clientX;
+});
+canvas.addEventListener('pointermove', e => {
+  if (!pointerDown && e.pointerType !== 'mouse') return;
+  if (pointerDown || e.pointerType === 'mouse') {
+    if (bucket) bucket.targetX = e.clientX;
+  }
+});
+canvas.addEventListener('pointerup',   () => { pointerDown = false; });
+canvas.addEventListener('pointerleave',() => { pointerDown = false; });
+
+// ====== Item spawning / falling ======
+class Item {
+  constructor(isBomb) {
+    this.isBomb = isBomb;
+    this.emoji = isBomb ? BOMB : FRUITS[Math.floor(Math.random()*FRUITS.length)];
+    this.x = 30 + Math.random() * (W - 60);
+    this.y = -40;
+    this.vy = 2.4 + Math.random() * 1.4;
+    this.size = 44 + Math.random() * 12;
+    this.rot = (Math.random() - 0.5) * 0.6;
+    this.vrot = (Math.random() - 0.5) * 0.04;
+    this.alive = true;
+  }
+  update() {
+    this.y += this.vy;
+    this.rot += this.vrot;
+    // Difficulty ramp: every 500 frames (~8s), +0.3 base fall speed
+    this.vy += 0.0015;
+    if (this.y - this.size > H) {
+      this.alive = false;
+      if (!this.isBomb) onMiss();
+    }
+    // Collision with bucket
+    if (bucket && this.y > bucket.y - 10 && this.y < bucket.y + 40 &&
+        Math.abs(this.x - bucket.x) < bucket.w * 0.5 - 5) {
+      this.alive = false;
+      if (this.isBomb) onBombHit(this.x, this.y);
+      else onCatch(this.x, this.y);
+    }
+  }
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rot);
+    ctx.font = `${this.size}px 'Segoe UI Emoji','Apple Color Emoji',sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this.emoji, 0, 0);
+    ctx.restore();
+  }
+}
+
+function spawnItem() {
+  const isBomb = Math.random() < BAD_PROB;
+  items.push(new Item(isBomb));
+}
+
+function onCatch(x, y) {
+  score++;
+  scoreEl.textContent = score;
+  playCatch();
+  for (let i = 0; i < 6; i++) {
+    sparks.push(new Spark(x, y - 10, '✨', 1.3));
+  }
+}
+function onBombHit(x, y) {
+  lives = Math.max(0, lives - 1);
+  updateLivesUI();
+  playBomb();
+  for (let i = 0; i < 14; i++) sparks.push(new Spark(x, y, '💥', 2.3));
+  if (lives <= 0) setTimeout(endGame, 400);
+}
+function onMiss() {
+  lives = Math.max(0, lives - 1);
+  updateLivesUI();
+  playMiss();
+  if (lives <= 0) setTimeout(endGame, 300);
+}
+
+class Spark {
+  constructor(x, y, glyph, speed) {
+    this.x = x; this.y = y; this.glyph = glyph;
+    const a = Math.random() * Math.PI * 2;
+    this.vx = Math.cos(a) * speed * (1 + Math.random());
+    this.vy = Math.sin(a) * speed * (1 + Math.random()) - 1.5;
+    this.age = 0; this.life = 30 + Math.random()*15;
+    this.size = 18 + Math.random()*10;
+    this.rot = Math.random()*Math.PI*2;
+    this.vrot = (Math.random()-0.5)*0.2;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    this.vy += 0.12; this.vx *= 0.98;
+    this.rot += this.vrot;
+    this.age++;
+    return this.age < this.life;
+  }
+  draw() {
+    const a = 1 - this.age/this.life;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, a);
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rot);
+    ctx.font = `${this.size}px 'Segoe UI Emoji','Apple Color Emoji',sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this.glyph, 0, 0);
+    ctx.restore();
+  }
+}
+
+// ====== Render ======
+function drawBucket() {
+  if (!bucket) return;
+  const { x, y, w } = bucket;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.font = `${w}px 'Segoe UI Emoji','Apple Color Emoji',sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🧺', 0, 0);
+  ctx.restore();
+}
+
+function frame() {
+  ctx.clearRect(0, 0, W, H);
+
+  if (running) {
+    elapsedFrames++;
+    // Spawn rate ramps up
+    spawnCooldown--;
+    if (spawnCooldown <= 0) {
+      spawnItem();
+      const rampMul = Math.max(0.35, 1 - elapsedFrames / 6000);
+      spawnCooldown = 20 + Math.floor(Math.random() * 28 * rampMul);
+    }
+    // Update bucket (arrow keys move target)
+    if (keys.left || keys.right) {
+      const spd = 10;
+      bucket.targetX += (keys.right ? spd : 0) - (keys.left ? spd : 0);
+    }
+    bucket.targetX = Math.max(bucket.w/2, Math.min(W - bucket.w/2, bucket.targetX));
+    bucket.x += (bucket.targetX - bucket.x) * 0.28;
+
+    // Update items
+    for (let i = items.length - 1; i >= 0; i--) {
+      items[i].update();
+      if (!items[i].alive) { items.splice(i, 1); }
+    }
+  }
+
+  // Sparks always update/draw
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    if (!sparks[i].update()) sparks.splice(i, 1);
+    else sparks[i].draw();
+  }
+
+  items.forEach(it => it.draw());
+  drawBucket();
+
+  requestAnimationFrame(frame);
+}
+
+resize();
+resetBucket();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
