@@ -5,277 +5,339 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>あそぼう！ゲームひろば 🎮</title>
 <style>
+:root {
+  --bg-0: #0a0a1a;
+  --bg-1: #141432;
+  --glass: rgba(255,255,255,0.04);
+  --glass-brd: rgba(255,255,255,0.10);
+  --txt: #eef0ff;
+  --txt-dim: rgba(238,240,255,0.62);
+}
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
 body {
-  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  font-family: 'Segoe UI', 'Noto Sans JP', system-ui, sans-serif;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2.5rem 1rem 4rem;
-  background: linear-gradient(-45deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #c77dff, #ff6bcd);
-  background-size: 400% 400%;
-  animation: gradMove 8s ease infinite;
+  padding: clamp(2.5rem, 6vw, 5rem) 1.25rem 5rem;
+  color: var(--txt);
+  background:
+    radial-gradient(1200px 800px at 15% -10%, #1d1b4b 0%, transparent 55%),
+    radial-gradient(1000px 700px at 90% 10%, #07303a 0%, transparent 50%),
+    radial-gradient(900px 900px at 50% 120%, #2a0e3a 0%, transparent 55%),
+    linear-gradient(180deg, var(--bg-1), var(--bg-0));
+  background-attachment: fixed;
   overflow-x: hidden;
   position: relative;
 }
-@keyframes gradMove {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+/* faint moving aurora behind everything */
+body::before {
+  content: '';
+  position: fixed; inset: -30%;
+  background:
+    radial-gradient(closest-side, rgba(99,102,241,0.16), transparent),
+    radial-gradient(closest-side, rgba(16,185,129,0.12), transparent),
+    radial-gradient(closest-side, rgba(236,72,153,0.12), transparent);
+  background-size: 60% 60%, 55% 55%, 50% 50%;
+  background-position: 10% 20%, 80% 30%, 50% 90%;
+  background-repeat: no-repeat;
+  filter: blur(40px);
+  animation: aurora 22s ease-in-out infinite alternate;
+  z-index: 0;
+  pointer-events: none;
 }
+@keyframes aurora {
+  0%   { background-position: 10% 20%, 80% 30%, 50% 90%; }
+  100% { background-position: 25% 35%, 65% 15%, 40% 75%; }
+}
+/* subtle star dots */
 .bg-float {
   position: fixed;
   pointer-events: none;
   animation: floatUp linear infinite;
   z-index: 0;
   user-select: none;
+  filter: drop-shadow(0 0 6px rgba(160,170,255,0.5));
 }
 @keyframes floatUp {
-  0%   { transform: translateY(110vh) rotate(0deg) scale(0.5); opacity: 0; }
-  5%   { opacity: 0.18; }
-  90%  { opacity: 0.18; }
-  100% { transform: translateY(-15vh) rotate(720deg) scale(1.2); opacity: 0; }
+  0%   { transform: translateY(108vh) scale(0.6); opacity: 0; }
+  10%  { opacity: 0.5; }
+  90%  { opacity: 0.5; }
+  100% { transform: translateY(-12vh) scale(1); opacity: 0; }
+}
+
+header {
+  position: relative; z-index: 1;
+  text-align: center;
+  margin-bottom: clamp(2.5rem, 6vw, 4rem);
+}
+.badge {
+  display: inline-block;
+  font-size: 0.8rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--txt-dim);
+  padding: 0.4rem 1rem;
+  border: 1px solid var(--glass-brd);
+  border-radius: 999px;
+  background: var(--glass);
+  backdrop-filter: blur(8px);
+  margin-bottom: 1.4rem;
 }
 h1 {
-  position: relative; z-index: 1;
-  color: white;
-  font-size: clamp(3rem, 9vw, 6rem);
-  text-align: center;
-  margin-bottom: 0.6rem;
-  text-shadow:
-    4px 6px 0 rgba(0,0,0,0.15),
-    0 0 40px rgba(255,255,255,0.6);
-  animation: titleDance 2.5s ease-in-out infinite;
-  filter: drop-shadow(0 0 24px rgba(255,255,255,0.5));
-}
-@keyframes titleDance {
-  0%,100% { transform: translateY(0) rotate(-1.5deg) scale(1); }
-  50%      { transform: translateY(-14px) rotate(1.5deg) scale(1.03); }
+  font-size: clamp(2.6rem, 8vw, 5.2rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  background: linear-gradient(100deg, #a5b4fc, #f0abfc 45%, #67e8f9 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 4px 30px rgba(129,140,248,0.35));
 }
 .subtitle {
-  position: relative; z-index: 1;
-  color: white;
-  font-size: clamp(1rem, 3.5vw, 1.5rem);
-  text-align: center;
-  margin-bottom: 3.5rem;
-  background: rgba(255,255,255,0.25);
-  backdrop-filter: blur(10px);
-  padding: 0.6rem 2rem;
-  border-radius: 40px;
-  border: 2px solid rgba(255,255,255,0.4);
-  text-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  margin-top: 1rem;
+  font-size: clamp(0.95rem, 2.6vw, 1.2rem);
+  color: var(--txt-dim);
+  font-weight: 500;
 }
 .cards {
   position: relative; z-index: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 2rem;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 1.25rem;
   width: 100%;
-  max-width: 980px;
+  max-width: 1080px;
 }
 .card {
-  border-radius: 28px;
-  padding: 2.5rem 2rem 2rem;
-  text-align: center;
-  text-decoration: none;
-  color: white;
+  --glow: 129,140,248;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  border-radius: 22px;
+  padding: 1.75rem 1.5rem 1.5rem;
+  text-decoration: none;
+  color: var(--txt);
+  background: var(--glass);
+  border: 1px solid var(--glass-brd);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   overflow: hidden;
-  transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.25s;
-  cursor: pointer;
-  border: 3px solid rgba(255,255,255,0.35);
+  isolation: isolate;
+  transition: transform 0.35s cubic-bezier(0.22,1,0.36,1),
+              border-color 0.35s, box-shadow 0.35s;
 }
+/* color halo per card */
 .card::before {
   content: '';
   position: absolute; inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 55%);
-  pointer-events: none;
+  background: radial-gradient(130% 90% at 50% -20%, rgba(var(--glow),0.28), transparent 60%);
+  opacity: 0.7;
+  transition: opacity 0.35s;
+  z-index: -1;
 }
+/* sheen */
 .card::after {
   content: '';
-  position: absolute; inset: -3px;
-  border-radius: 31px;
-  background: linear-gradient(135deg, #fff, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #c77dff, #fff);
-  z-index: -1;
-  animation: borderSpin 4s linear infinite;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-.card:hover::after { opacity: 1; }
-@keyframes borderSpin {
-  to { filter: hue-rotate(360deg); }
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+  opacity: 0.6;
 }
 .card:hover {
-  transform: translateY(-14px) scale(1.05) rotate(-1deg);
-  box-shadow: 0 28px 70px rgba(0,0,0,0.3);
+  transform: translateY(-8px);
+  border-color: rgba(var(--glow),0.55);
+  box-shadow: 0 18px 50px rgba(var(--glow),0.30),
+              0 0 0 1px rgba(var(--glow),0.25) inset;
 }
-.card:active {
-  transform: translateY(-5px) scale(1.02) rotate(0deg);
-}
-.card-1 {
-  background: linear-gradient(145deg, #ff6b6b, #ee5a24);
-  box-shadow: 0 10px 40px rgba(238,90,36,0.45);
-}
-.card-2 {
-  background: linear-gradient(145deg, #0be881, #0984e3);
-  box-shadow: 0 10px 40px rgba(9,132,227,0.4);
-}
-.card-3 {
-  background: linear-gradient(145deg, #a29bfe, #fd79a8);
-  box-shadow: 0 10px 40px rgba(162,155,254,0.45);
-}
-.card-4 {
-  background: linear-gradient(145deg, #56ab2f, #a8e063);
-  box-shadow: 0 10px 40px rgba(86,171,47,0.45);
-}
-.card-5 {
-  background: linear-gradient(145deg, #89f7fe, #66a6ff);
-  box-shadow: 0 10px 40px rgba(102,166,255,0.45);
-}
-.card-6 {
-  background: linear-gradient(145deg, #f8b500, #ff6a88);
-  box-shadow: 0 10px 40px rgba(255,106,136,0.45);
-}
-.card-7 {
-  background: linear-gradient(145deg, #3a1c71, #d76d77);
-  box-shadow: 0 10px 40px rgba(215,109,119,0.45);
-}
-.card-8 {
-  background: linear-gradient(145deg, #f6d365, #fda085);
-  box-shadow: 0 10px 40px rgba(253,160,133,0.5);
-}
-.card-9 {
-  background: linear-gradient(145deg, #fbc2eb, #f8b500);
-  box-shadow: 0 10px 40px rgba(248,181,0,0.45);
-}
+.card:hover::before { opacity: 1; }
+.card:active { transform: translateY(-3px) scale(0.99); }
+
+.card-1  { --glow: 248,113,113; }
+.card-2  { --glow: 56,189,248; }
+.card-3  { --glow: 167,139,250; }
+.card-4  { --glow: 74,222,128; }
+.card-5  { --glow: 103,232,249; }
+.card-6  { --glow: 251,191,36; }
+.card-7  { --glow: 244,114,182; }
+.card-8  { --glow: 251,146,60; }
+.card-9  { --glow: 250,204,21; }
+.card-10 { --glow: 129,140,248; }
+.card-11 { --glow: 52,211,153; }
+.card-12 { --glow: 244,182,200; }
+.card-13 { --glow: 251,113,133; }
+.card-14 { --glow: 192,132,252; }
+
 .card-emoji {
-  font-size: 5.5rem;
+  font-size: 3rem;
+  line-height: 1;
   margin-bottom: 1rem;
-  display: block;
-  filter: drop-shadow(0 6px 10px rgba(0,0,0,0.25));
+  display: grid;
+  place-items: center;
+  width: 64px; height: 64px;
+  border-radius: 18px;
+  background: rgba(var(--glow),0.14);
+  border: 1px solid rgba(var(--glow),0.3);
+  box-shadow: 0 0 24px rgba(var(--glow),0.25);
+  transition: transform 0.35s cubic-bezier(0.22,1,0.36,1);
 }
-.card:nth-child(1) .card-emoji { animation: wobble1 2.5s ease-in-out infinite; }
-.card:nth-child(2) .card-emoji { animation: wobble2 2.8s ease-in-out infinite 0.4s; }
-.card:nth-child(3) .card-emoji { animation: wobble3 2.3s ease-in-out infinite 0.8s; }
-.card:nth-child(4) .card-emoji { animation: wobble1 2.6s ease-in-out infinite 1.2s; }
-.card:nth-child(5) .card-emoji { animation: wobble2 2.9s ease-in-out infinite 1.6s; }
-.card:nth-child(6) .card-emoji { animation: wobble3 2.7s ease-in-out infinite 2.0s; }
-.card:nth-child(7) .card-emoji { animation: wobble1 2.4s ease-in-out infinite 2.4s; }
-.card:nth-child(8) .card-emoji { animation: wobble2 2.7s ease-in-out infinite 2.8s; }
-.card:nth-child(9) .card-emoji { animation: wobble3 2.5s ease-in-out infinite 3.2s; }
-@keyframes wobble1 {
-  0%,100% { transform: rotate(-8deg) scale(1); }
-  50%      { transform: rotate(8deg) scale(1.15); }
-}
-@keyframes wobble2 {
-  0%,100% { transform: translateY(0) scale(1); }
-  50%      { transform: translateY(-12px) scale(1.15); }
-}
-@keyframes wobble3 {
-  0%,100% { transform: rotate(0deg) scale(1); }
-  25%      { transform: rotate(10deg) scale(1.1); }
-  75%      { transform: rotate(-10deg) scale(1.1); }
-}
+.card:hover .card-emoji { transform: scale(1.08) rotate(-4deg); }
 .card-title {
-  font-size: 1.9rem;
-  font-weight: 900;
-  margin-bottom: 0.6rem;
-  text-shadow: 0 3px 6px rgba(0,0,0,0.25);
-  letter-spacing: 0.02em;
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  margin-bottom: 0.45rem;
 }
 .card-desc {
-  font-size: 1.05rem;
-  color: rgba(255,255,255,0.93);
-  line-height: 1.7;
-  font-weight: 500;
+  font-size: 0.92rem;
+  color: var(--txt-dim);
+  line-height: 1.6;
+  font-weight: 400;
 }
+.card-arrow {
+  margin-top: 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgb(var(--glow));
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  opacity: 0.85;
+  transition: gap 0.3s, opacity 0.3s;
+}
+.card:hover .card-arrow { gap: 0.7rem; opacity: 1; }
+
 .footer {
   position: relative; z-index: 1;
-  margin-top: 3.5rem;
-  color: white;
-  font-size: 1.1rem;
-  text-shadow: 0 2px 6px rgba(0,0,0,0.2);
-  animation: heartbeat 1.5s ease-in-out infinite;
+  margin-top: 4rem;
+  color: var(--txt-dim);
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
 }
-@keyframes heartbeat {
-  0%,100% { transform: scale(1); }
-  14%      { transform: scale(1.15); }
-  28%      { transform: scale(1); }
-  42%      { transform: scale(1.1); }
-  56%      { transform: scale(1); }
+@media (prefers-reduced-motion: reduce) {
+  body::before, .bg-float { animation: none; }
+  .card { transition: none; }
 }
 </style>
 </head>
 <body>
-<h1>🎮 あそぼう！</h1>
-<p class="subtitle">✨ たのしいゲームがいっぱい！すきなゲームをえらんでね ✨</p>
+<header>
+  <span class="badge">Game Hiroba</span>
+  <h1>あそぼう！</h1>
+  <p class="subtitle">たのしいゲームがいっぱい。すきなのを えらんでね ✨</p>
+</header>
 
 <div class="cards">
   <a href="moji-hanabi/" class="card card-1">
     <span class="card-emoji">🎆</span>
     <div class="card-title">もじはなび</div>
     <div class="card-desc">キーをおすと もじが はなびみたいに とびはねる！</div>
+    <span class="card-arrow">あそぶ →</span>
   </a>
   <a href="kioku-match/" class="card card-2">
     <span class="card-emoji">🃏</span>
     <div class="card-title">きおくあわせ</div>
     <div class="card-desc">おなじどうぶつの カードを みつけよう！ きおくりょくが ためされるよ</div>
+    <span class="card-arrow">あそぶ →</span>
   </a>
   <a href="emoji-awase/" class="card card-3">
     <span class="card-emoji">🧩</span>
     <div class="card-title">えもじパズル</div>
     <div class="card-desc">スライドして どうぶつを ならべよう！ かんがえるパズルゲーム</div>
+    <span class="card-arrow">あそぶ →</span>
   </a>
   <a href="moguratataki/" class="card card-4">
     <span class="card-emoji">🔨</span>
     <div class="card-title">もぐらたたき</div>
     <div class="card-desc">ひょっこり でてきた どうぶつを タップして たくさん たたこう！ 30びょうスコアアタック</div>
+    <span class="card-arrow">あそぶ →</span>
   </a>
   <a href="shabon-dama/" class="card card-5">
     <span class="card-emoji">🫧</span>
     <div class="card-title">シャボンだまぱちん</div>
     <div class="card-desc">ふわふわ うかぶ シャボンだまを ぱちん！ と わって あそぼう</div>
+    <span class="card-arrow">あそぶ →</span>
   </a>
   <a href="oekaki-board/" class="card card-6">
     <span class="card-emoji">🎨</span>
     <div class="card-title">おえかきボード</div>
     <div class="card-desc">ゆびで じゆうに おえかき！ いろ・ふとさをえらんで、ほぞんもできるよ</div>
+    <span class="card-arrow">あそぶ →</span>
   </a>
   <a href="doubutsu-piano/" class="card card-7">
     <span class="card-emoji">🎹</span>
     <div class="card-title">どうぶつピアノ</div>
     <div class="card-desc">けんばんを タップ！ ピアノの おとと どうぶつの なきごえを きりかえて あそぼう</div>
+    <span class="card-arrow">あそぶ →</span>
   </a>
   <a href="ochimono-catch/" class="card card-8">
     <span class="card-emoji">🧺</span>
     <div class="card-title">おちものキャッチ</div>
     <div class="card-desc">ふってくる くだものを バケツで うけとめよう！ バクダンは よけてね 💣</div>
+    <span class="card-arrow">あそぶ →</span>
   </a>
   <a href="tamago-wari/" class="card card-9">
     <span class="card-emoji">🥚</span>
     <div class="card-title">たまごわり</div>
     <div class="card-desc">たまごを 3かい タップ！ なかから どうぶつの あかちゃんが でてくるよ</div>
+    <span class="card-arrow">あそぶ →</span>
+  </a>
+  <a href="maneko/" class="card card-10">
+    <span class="card-emoji">🎵</span>
+    <div class="card-title">まねっこ</div>
+    <div class="card-desc">ひかった じゅんばんに タップ！ どこまで おぼえられるかな？</div>
+    <span class="card-arrow">あそぶ →</span>
+  </a>
+  <a href="meiro/" class="card card-11">
+    <span class="card-emoji">🐭</span>
+    <div class="card-title">めいろ</div>
+    <div class="card-desc">🐭 を うごかして 🧀 チーズまで たどりつこう！ むずかしさも えらべるよ</div>
+    <span class="card-arrow">あそぶ →</span>
+  </a>
+  <a href="kage-awase/" class="card card-12">
+    <span class="card-emoji">🔍</span>
+    <div class="card-title">かげあわせ</div>
+    <div class="card-desc">くろい かげは どのどうぶつ？ 30びょうで なんもん せいかいできるかな？</div>
+    <span class="card-arrow">あそぶ →</span>
+  </a>
+  <a href="janken/" class="card card-13">
+    <span class="card-emoji">✊</span>
+    <div class="card-title">じゃんけん</div>
+    <div class="card-desc">CPU と じゃんけんしょうぶ！ れんしょうすると おいわいが まってるよ</div>
+    <span class="card-arrow">あそぶ →</span>
+  </a>
+  <a href="hikari-puzzle/" class="card card-14">
+    <span class="card-emoji">💡</span>
+    <div class="card-title">ひかりパズル</div>
+    <div class="card-desc">💡 を タップして ぜんぶ けそう！ あたまを つかうパズル</div>
+    <span class="card-arrow">あそぶ →</span>
   </a>
 </div>
 
-<p class="footer">❤️ made with love for my nephew ❤️</p>
+<p class="footer">❤︎ made with love for my nephew</p>
 
 <script>
-const BG_EMOJIS = ['⭐','🌈','✨','🎉','🌟','💫','🎊','🎵','🌸','🦋','🎈','🍭','🌺','🎀','🪄','🎠'];
+const BG_EMOJIS = ['✦','✧','⭑','·','✦','✧'];
 function spawnFloater() {
   const el = document.createElement('span');
   el.className = 'bg-float';
   el.textContent = BG_EMOJIS[Math.floor(Math.random() * BG_EMOJIS.length)];
   el.style.left = (Math.random() * 100) + 'vw';
-  const dur = 10 + Math.random() * 10;
+  el.style.color = ['#a5b4fc','#67e8f9','#f0abfc','#ffffff'][Math.floor(Math.random()*4)];
+  const dur = 12 + Math.random() * 12;
   el.style.animationDuration = dur + 's';
-  el.style.fontSize = (1.5 + Math.random() * 3) + 'rem';
+  el.style.fontSize = (0.6 + Math.random() * 1.4) + 'rem';
   document.body.appendChild(el);
   setTimeout(() => el.remove(), dur * 1000 + 500);
 }
-for (let i = 0; i < 18; i++) setTimeout(spawnFloater, i * 500);
-setInterval(spawnFloater, 900);
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (!reduce) {
+  for (let i = 0; i < 14; i++) setTimeout(spawnFloater, i * 600);
+  setInterval(spawnFloater, 1400);
+}
 </script>
 </body>
 </html>
