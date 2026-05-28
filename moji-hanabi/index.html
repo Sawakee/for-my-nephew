@@ -54,8 +54,8 @@ canvas {
   text-align: center;
   max-width: 95vw;
 }
-#back-btn {
-  position: fixed; top: 1rem; left: 1rem; z-index: 10;
+#back-btn, #audio-btn {
+  position: fixed; top: 1rem; z-index: 10;
   background: rgba(255,255,255,0.12);
   color: white; border: 1px solid rgba(255,255,255,0.2);
   border-radius: 10px; padding: 0.4rem 0.9rem;
@@ -63,7 +63,9 @@ canvas {
   text-decoration: none; transition: background 0.2s;
   backdrop-filter: blur(8px);
 }
-#back-btn:hover { background: rgba(255,255,255,0.22); }
+#back-btn { left: 1rem; }
+#audio-btn { right: 1rem; font-size: 1.1rem; line-height: 1; }
+#back-btn:hover, #audio-btn:hover { background: rgba(255,255,255,0.22); }
 #count {
   position: fixed; bottom: 1rem; right: 1rem; z-index: 5;
   color: rgba(255,255,255,0.25);
@@ -118,6 +120,7 @@ canvas {
   <div id="hint" id="hint">キーをおして はなびをあげよう！ &nbsp;Space=★ &nbsp;Enter=❤ &nbsp;BackSpace=ぜんけし</div>
 </div>
 <a href="../" id="back-btn">← もどる</a>
+<button id="audio-btn" aria-label="おと">🔊</button>
 <div id="count"></div>
 
 <!-- Mobile button bar -->
@@ -130,6 +133,63 @@ canvas {
 </div>
 
 <script>
+// --- Web Audio SFX (firework whoosh + pop) ---
+const Sfx = (() => {
+  let actx;
+  let muted = localStorage.getItem('sfx-muted') === '1';
+  const init = () => {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+  };
+  const tone = (freq, dur, type='sine', vol=0.12, delay=0, freqEnd=null) => {
+    if (muted) return;
+    init();
+    const t = actx.currentTime + delay;
+    const osc = actx.createOscillator();
+    const g = actx.createGain();
+    osc.type = type; osc.frequency.setValueAtTime(freq, t);
+    if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, t + dur);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(g); g.connect(actx.destination);
+    osc.start(t); osc.stop(t + dur + 0.05);
+  };
+  const noise = (dur, vol=0.1) => {
+    if (muted) return;
+    init();
+    const t = actx.currentTime;
+    const buf = actx.createBuffer(1, actx.sampleRate * dur, actx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * (1 - i/d.length);
+    const src = actx.createBufferSource(); src.buffer = buf;
+    const g = actx.createGain(); g.gain.value = vol;
+    src.connect(g); g.connect(actx.destination); src.start(t);
+  };
+  return {
+    pop: () => {
+      const base = 400 + Math.random() * 500;
+      tone(base, 0.3, 'sine', 0.14, 0, base * 0.3);
+      noise(0.15, 0.08);
+    },
+    burst: () => {
+      tone(800, 0.4, 'triangle', 0.1, 0, 200);
+      noise(0.25, 0.1);
+    },
+    clear: () => { noise(0.05, 0.05); },
+    toggle() { muted = !muted; localStorage.setItem('sfx-muted', muted ? '1' : '0'); return muted; },
+    muted: () => muted
+  };
+})();
+(() => {
+  const btn = document.getElementById('audio-btn');
+  btn.textContent = Sfx.muted() ? '🔇' : '🔊';
+  btn.addEventListener('click', () => {
+    const m = Sfx.toggle();
+    btn.textContent = m ? '🔇' : '🔊';
+  });
+})();
+
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 const countEl = document.getElementById('count');
@@ -243,15 +303,16 @@ function spawnChar(ch, ox, oy) {
 function btnTap(ch) {
   spawnChar(ch);
   spawnBurst(ch, 6);
+  Sfx.pop();
 }
 
 // ===== KEYBOARD =====
 document.addEventListener('keydown', (e) => {
   e.preventDefault();
-  if (e.key===' ')         { spawnBurst('★',8); spawnBurst('✦',6); }
-  else if (e.key==='Enter') { spawnBurst('❤',12); spawnChar('❤'); }
-  else if (e.key==='Backspace') { particles=[]; }
-  else if (e.key.length===1) { spawnChar(e.key); }
+  if (e.key===' ')         { spawnBurst('★',8); spawnBurst('✦',6); Sfx.burst(); }
+  else if (e.key==='Enter') { spawnBurst('❤',12); spawnChar('❤'); Sfx.pop(); }
+  else if (e.key==='Backspace') { particles=[]; Sfx.clear(); }
+  else if (e.key.length===1) { spawnChar(e.key); Sfx.pop(); }
 });
 
 // ===== TOUCH =====
@@ -262,6 +323,7 @@ canvas.addEventListener('touchstart', (e) => {
     spawnBurst('★', 7, t.clientX, t.clientY);
     spawnBurst('✦', 5, t.clientX, t.clientY);
   }
+  Sfx.burst();
 }, {passive: false});
 
 canvas.addEventListener('touchmove', (e) => {

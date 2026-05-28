@@ -49,7 +49,7 @@ h1 {
 }
 #stats {
   position: relative; z-index: 1;
-  display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; justify-content: center;
+  display: flex; gap: 1rem; margin-bottom: 0.8rem; flex-wrap: wrap; justify-content: center;
 }
 .stat-pill {
   background: rgba(255,255,255,0.15);
@@ -59,15 +59,36 @@ h1 {
   color: white; font-size: 1rem; font-weight: 700;
   text-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
+#diff-selector {
+  position: relative; z-index: 1;
+  display: flex; gap: 0.5rem; margin-bottom: 1.2rem;
+}
+.diff-btn {
+  padding: 0.4rem 1.2rem; border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 25px; background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.7); font-weight: 700; font-size: 0.95rem;
+  cursor: pointer; transition: all 0.2s;
+}
+.diff-btn:hover { background: rgba(255,255,255,0.18); color: white; }
+.diff-btn.active {
+  background: linear-gradient(135deg, #ffd93d, #ff6b6b);
+  color: white; border-color: rgba(255,255,255,0.6);
+  box-shadow: 0 4px 12px rgba(255,107,107,0.4);
+}
 #board {
   position: relative; z-index: 1;
   display: grid; grid-template-columns: repeat(4, 1fr);
   gap: 0.8rem; margin-bottom: 1.5rem;
 }
+body.hard #board { gap: 0.6rem; }
 .card-wrap {
   width: clamp(65px, 17vw, 95px);
   height: clamp(85px, 21vw, 120px);
   cursor: pointer;
+}
+body.hard .card-wrap {
+  width: clamp(55px, 14vw, 80px);
+  height: clamp(70px, 17vw, 100px);
 }
 .card-inner {
   width: 100%; height: 100%;
@@ -163,8 +184,8 @@ h1 {
   .touch-hint    { display: inline; }
   #board { gap: 0.6rem; }
 }
-#back-btn {
-  position: fixed; top: 1rem; left: 1rem; z-index: 10;
+#back-btn, #audio-btn {
+  position: fixed; top: 1rem; z-index: 10;
   background: rgba(255,255,255,0.15);
   backdrop-filter: blur(8px);
   color: white; border: 1px solid rgba(255,255,255,0.3);
@@ -172,7 +193,9 @@ h1 {
   cursor: pointer; font-size: 0.9rem; text-decoration: none;
   transition: background 0.2s;
 }
-#back-btn:hover { background: rgba(255,255,255,0.28); }
+#back-btn { left: 1rem; }
+#audio-btn { right: 1rem; font-size: 1.1rem; line-height: 1; }
+#back-btn:hover, #audio-btn:hover { background: rgba(255,255,255,0.28); }
 #confetti-layer {
   position: fixed; inset: 0;
   pointer-events: none; z-index: 100;
@@ -182,10 +205,15 @@ h1 {
 </head>
 <body>
 <a href="../" id="back-btn">← もどる</a>
+<button id="audio-btn" aria-label="おと">🔊</button>
 <h1>🃏 きおくあわせ</h1>
 <div id="stats">
   <div class="stat-pill">てすう: <span id="moves">0</span></div>
-  <div class="stat-pill">みつけた: <span id="pairs">0</span> / 4</div>
+  <div class="stat-pill">みつけた: <span id="pairs">0</span> / <span id="total-pairs">4</span></div>
+</div>
+<div id="diff-selector">
+  <button class="diff-btn active" data-diff="easy">かんたん (4×2)</button>
+  <button class="diff-btn" data-diff="hard">むずかしい (4×4)</button>
 </div>
 <div id="board"></div>
 <div id="message"></div>
@@ -198,6 +226,49 @@ h1 {
 <canvas id="confetti-layer"></canvas>
 
 <script>
+// --- Web Audio SFX ---
+const Sfx = (() => {
+  let ctx;
+  let muted = localStorage.getItem('sfx-muted') === '1';
+  const init = () => {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+  };
+  const play = (freq, dur, type='sine', vol=0.2, delay=0) => {
+    if (muted) return;
+    init();
+    const t = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(t); osc.stop(t + dur + 0.05);
+  };
+  const seq = (notes, type='triangle', vol=0.22) => {
+    let t = 0;
+    notes.forEach(([f, d]) => { play(f, d, type, vol, t); t += d * 0.9; });
+  };
+  return {
+    flip:  () => play(660, 0.08, 'sine', 0.15),
+    match: () => seq([[523, 0.1],[659, 0.1],[784, 0.18]], 'triangle'),
+    fail:  () => seq([[330, 0.12],[220, 0.2]], 'sawtooth', 0.15),
+    clear: () => seq([[523, 0.14],[659, 0.14],[784, 0.14],[1047, 0.32]], 'triangle', 0.28),
+    toggle() { muted = !muted; localStorage.setItem('sfx-muted', muted ? '1' : '0'); return muted; },
+    muted: () => muted
+  };
+})();
+(() => {
+  const btn = document.getElementById('audio-btn');
+  btn.textContent = Sfx.muted() ? '🔇' : '🔊';
+  btn.addEventListener('click', () => {
+    const m = Sfx.toggle();
+    btn.textContent = m ? '🔇' : '🔊';
+  });
+})();
+
 // Background stars
 const STARS = ['✦','✧','⭐','🌟','💫'];
 for (let i = 0; i < 25; i++) {
@@ -212,27 +283,47 @@ for (let i = 0; i < 25; i++) {
   document.body.appendChild(s);
 }
 
-const EMOJIS = ['🐶','🐱','🐭','🐹'];
-let cards, matched, faceUp, flipped, moves, pairsFound, cursor;
+const DIFFICULTIES = {
+  easy: { emojis: ['🐶','🐱','🐭','🐹'], cols: 4 },
+  hard: { emojis: ['🐶','🐱','🐭','🐹','🐰','🐻','🐼','🦁'], cols: 4 }
+};
+let difficulty = 'easy';
+let cards, matched, faceUp, flipped, moves, pairsFound, cursor, totalCards;
 let locked = false;
 
 function init() {
-  const deck = [...EMOJIS, ...EMOJIS];
+  const cfg = DIFFICULTIES[difficulty];
+  const emojis = cfg.emojis;
+  totalCards = emojis.length * 2;
+  const deck = [...emojis, ...emojis];
   for (let i = deck.length-1; i > 0; i--) {
     const j = Math.floor(Math.random()*(i+1));
     [deck[i], deck[j]] = [deck[j], deck[i]];
   }
   cards = deck;
-  matched = Array(8).fill(false);
-  faceUp  = Array(8).fill(false);
+  matched = Array(totalCards).fill(false);
+  faceUp  = Array(totalCards).fill(false);
   flipped = []; moves = 0; pairsFound = 0; cursor = 0; locked = false;
+  document.body.classList.toggle('hard', difficulty === 'hard');
   document.getElementById('moves').textContent = '0';
   document.getElementById('pairs').textContent = '0';
+  document.getElementById('total-pairs').textContent = emojis.length;
   document.getElementById('message').textContent = '';
   document.getElementById('restart-btn').style.display = 'none';
   document.getElementById('board').innerHTML = ''; // force full rebuild on new game
   render();
 }
+
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const d = btn.dataset.diff;
+    if (d === difficulty) return;
+    difficulty = d;
+    document.querySelectorAll('.diff-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.diff === d));
+    init();
+  });
+});
 
 function cardClass(i, shakeIdxs) {
   return 'card-wrap' +
@@ -245,7 +336,7 @@ function cardClass(i, shakeIdxs) {
 function render(shakeIdxs) {
   const board = document.getElementById('board');
   const existing = board.querySelectorAll('.card-wrap');
-  if (existing.length === 8) {
+  if (existing.length === totalCards) {
     // Update classes in-place — no DOM destruction, no layout shift
     existing.forEach((w, i) => { w.className = cardClass(i, shakeIdxs); });
   } else {
@@ -272,6 +363,7 @@ function flipCard(i) {
 
   faceUp[i] = true;
   flipped.push(i);
+  Sfx.flip();
   render();
 
   if (flipped.length === 2) {
@@ -284,16 +376,19 @@ function flipCard(i) {
       pairsFound++;
       document.getElementById('pairs').textContent = pairsFound;
       flipped = [];
+      Sfx.match();
       render();
-      if (pairsFound === 4) {
+      if (pairsFound === totalCards/2) {
         document.getElementById('message').textContent = `🎉 クリア！ ${moves}てでできたよ！ 🎉`;
         document.getElementById('restart-btn').style.display = 'inline-block';
+        setTimeout(() => Sfx.clear(), 400);
         launchConfetti();
       }
     } else {
       locked = true;
       const bad = [...flipped];
       setTimeout(() => {
+        Sfx.fail();
         render(bad); // add shake class
         setTimeout(() => {
           faceUp[bad[0]] = false;
@@ -308,10 +403,11 @@ function flipCard(i) {
 
 document.addEventListener('keydown', (e) => {
   if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' ','Enter'].includes(e.key)) e.preventDefault();
-  if (e.key === 'ArrowRight') { cursor = (cursor+1)%8; render(); }
-  else if (e.key === 'ArrowLeft') { cursor = (cursor+7)%8; render(); }
-  else if (e.key === 'ArrowDown') { cursor = (cursor+4)%8; render(); }
-  else if (e.key === 'ArrowUp')   { cursor = (cursor+4)%8; render(); }
+  const N = totalCards, cols = DIFFICULTIES[difficulty].cols;
+  if (e.key === 'ArrowRight') { cursor = (cursor+1)%N; render(); }
+  else if (e.key === 'ArrowLeft') { cursor = (cursor+N-1)%N; render(); }
+  else if (e.key === 'ArrowDown') { cursor = (cursor+cols)%N; render(); }
+  else if (e.key === 'ArrowUp')   { cursor = (cursor+N-cols)%N; render(); }
   else if (e.key === 'Enter' || e.key === ' ') { flipCard(cursor); }
 });
 

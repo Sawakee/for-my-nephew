@@ -45,13 +45,49 @@ h1 {
 }
 #stats {
   position: relative; z-index: 1;
+  display: flex; gap: 0.6rem; margin-bottom: 1rem;
+  flex-wrap: wrap; justify-content: center;
+}
+.stat-pill {
   background: rgba(255,255,255,0.25);
   backdrop-filter: blur(10px);
   border: 2px solid rgba(255,255,255,0.4);
-  border-radius: 30px; padding: 0.4rem 1.5rem;
-  color: white; font-size: 1.1rem; font-weight: 700;
-  margin-bottom: 1.5rem;
+  border-radius: 30px; padding: 0.4rem 1.1rem;
+  color: white; font-size: 1rem; font-weight: 700;
   text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+#hint-btn {
+  background: linear-gradient(135deg, #ffd93d, #ff9f43);
+  border: 2px solid rgba(255,255,255,0.4);
+  color: white; font-weight: 800; font-size: 1rem;
+  padding: 0.4rem 1.2rem; border-radius: 30px;
+  cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 14px rgba(255,159,67,0.4);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+#hint-btn:hover { transform: scale(1.06); }
+#hint-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.tile.hint-glow {
+  animation: hintGlow 0.8s ease-in-out 3;
+  z-index: 2;
+}
+@keyframes hintGlow {
+  0%,100% { box-shadow: 0 0 0 0 rgba(255,215,0,0.9), 0 6px 16px rgba(0,0,0,0.3); }
+  50%     { box-shadow: 0 0 0 10px rgba(255,215,0,0), 0 0 30px rgba(255,215,0,0.9); transform: scale(1.08); }
+}
+#stars {
+  position: relative; z-index: 1;
+  font-size: clamp(1.8rem, 6vw, 2.8rem);
+  min-height: 1.5em; text-align: center;
+  text-shadow: 0 0 20px rgba(255,215,0,0.8), 0 3px 6px rgba(0,0,0,0.3);
+  letter-spacing: 0.15em;
+}
+#stars .star-earned { animation: starPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both; display: inline-block; }
+#stars .star-earned:nth-child(2) { animation-delay: 0.2s; }
+#stars .star-earned:nth-child(3) { animation-delay: 0.4s; }
+@keyframes starPop {
+  0%   { transform: scale(0) rotate(-180deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
 }
 .game-area {
   position: relative; z-index: 1;
@@ -177,15 +213,17 @@ h1 {
   .keyboard-hint { display: none; }
   .touch-hint    { display: inline; }
 }
-#back-btn {
-  position: fixed; top: 1rem; left: 1rem; z-index: 10;
+#back-btn, #audio-btn {
+  position: fixed; top: 1rem; z-index: 10;
   background: rgba(255,255,255,0.2); backdrop-filter: blur(8px);
   color: white; border: 1px solid rgba(255,255,255,0.35);
   border-radius: 10px; padding: 0.4rem 0.9rem;
   cursor: pointer; font-size: 0.9rem; text-decoration: none;
   transition: background 0.2s;
 }
-#back-btn:hover { background: rgba(255,255,255,0.35); }
+#back-btn { left: 1rem; }
+#audio-btn { right: 1rem; font-size: 1.1rem; line-height: 1; }
+#back-btn:hover, #audio-btn:hover { background: rgba(255,255,255,0.35); }
 #confetti-layer {
   position: fixed; inset: 0; pointer-events: none; z-index: 100; display: none;
 }
@@ -193,8 +231,13 @@ h1 {
 </head>
 <body>
 <a href="../" id="back-btn">← もどる</a>
+<button id="audio-btn" aria-label="おと">🔊</button>
 <h1>🧩 えもじパズル</h1>
-<div id="stats">てすう: <span id="moves">0</span></div>
+<div id="stats">
+  <div class="stat-pill">てすう: <span id="moves">0</span></div>
+  <div class="stat-pill">さいてき: <span id="optimal">-</span>て</div>
+  <button id="hint-btn">💡 ヒント</button>
+</div>
 
 <div class="game-area">
   <div class="board-section">
@@ -208,6 +251,7 @@ h1 {
 </div>
 
 <div id="message"></div>
+<div id="stars"></div>
 <button id="restart-btn" onclick="init()">もう一度あそぶ 🔄</button>
 <div id="controls">
   <span class="touch-hint">タイルをタップしてうごかそう！</span>
@@ -216,6 +260,48 @@ h1 {
 <canvas id="confetti-layer"></canvas>
 
 <script>
+// --- Web Audio SFX ---
+const Sfx = (() => {
+  let ctx;
+  let muted = localStorage.getItem('sfx-muted') === '1';
+  const init = () => {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+  };
+  const play = (freq, dur, type='sine', vol=0.2, delay=0) => {
+    if (muted) return;
+    init();
+    const t = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(t); osc.stop(t + dur + 0.05);
+  };
+  const seq = (notes, type='triangle', vol=0.22) => {
+    let t = 0;
+    notes.forEach(([f, d]) => { play(f, d, type, vol, t); t += d * 0.9; });
+  };
+  return {
+    move:  () => play(520, 0.06, 'square', 0.1),
+    hint:  () => seq([[880, 0.08],[1175, 0.15]], 'triangle', 0.18),
+    clear: () => seq([[523, 0.14],[659, 0.14],[784, 0.14],[1047, 0.32]], 'triangle', 0.28),
+    toggle() { muted = !muted; localStorage.setItem('sfx-muted', muted ? '1' : '0'); return muted; },
+    muted: () => muted
+  };
+})();
+(() => {
+  const btn = document.getElementById('audio-btn');
+  btn.textContent = Sfx.muted() ? '🔇' : '🔊';
+  btn.addEventListener('click', () => {
+    const m = Sfx.toggle();
+    btn.textContent = m ? '🔇' : '🔊';
+  });
+})();
+
 // Background bubbles
 const BG_COLORS = ['#fff','#ffd93d','#ff6b6b','#74c0fc','#c77dff'];
 for (let i = 0; i < 12; i++) {
@@ -234,8 +320,34 @@ for (let i = 0; i < 12; i++) {
 
 const EMOJIS = ['', '🐶','🐱','🐭','🐹'];
 const GOAL = [1,1,2,2,3,3,4,4,0];
+const GOAL_KEY = GOAL.join('');
 const TYPE_CLASS = ['','type-1','type-2','type-3','type-4'];
-let board, moves, solved;
+let board, moves, solved, optimalMoves;
+
+// BFS solver — returns sequence of tile indices to click from `start` to GOAL.
+// State space is 9!/(2!^4) ≈ 22680 due to tile-type duplication, so BFS is fast.
+function solve(start) {
+  if (start.join('') === GOAL_KEY) return [];
+  const visited = new Set([start.join('')]);
+  let frontier = [{ b: start, path: [] }];
+  while (frontier.length) {
+    const next = [];
+    for (const { b, path } of frontier) {
+      const blank = b.indexOf(0);
+      for (const n of neighbors(blank)) {
+        const nb = [...b]; [nb[blank], nb[n]] = [nb[n], nb[blank]];
+        const k = nb.join('');
+        if (visited.has(k)) continue;
+        const newPath = [...path, n];
+        if (k === GOAL_KEY) return newPath;
+        visited.add(k);
+        next.push({ b: nb, path: newPath });
+      }
+    }
+    frontier = next;
+  }
+  return null;
+}
 
 function getBlank(b) { return b.indexOf(0); }
 function neighbors(idx) {
@@ -290,16 +402,47 @@ function doMove(tileIdx) {
   if (!neighbors(blank).includes(tileIdx)) return;
   board = slide(board, tileIdx, blank);
   moves++;
+  Sfx.move();
   document.getElementById('moves').textContent = moves;
   render(blank); // blank becomes where the tile slides to
   if (isGoal(board)) {
     solved = true;
+    setTimeout(() => Sfx.clear(), 200);
+    document.getElementById('hint-btn').disabled = true;
+    const stars = computeStars(moves, optimalMoves);
     const msg = document.getElementById('message');
-    msg.textContent = `🎉 クリア！ ${moves}てでできたよ！ 🎉`;
+    msg.textContent = `🎉 クリア！ ${moves}て！ さいてき ${optimalMoves}て 🎉`;
+    const starsEl = document.getElementById('stars');
+    starsEl.innerHTML = '⭐⭐⭐'.slice(0, stars)
+      .split('').map(s => `<span class="star-earned">${s}</span>`).join('')
+      + '☆☆☆'.slice(0, 3-stars);
     document.getElementById('restart-btn').style.display = 'inline-block';
     launchConfetti();
   }
 }
+
+function computeStars(used, optimal) {
+  if (!optimal) return 3;
+  const ratio = used / optimal;
+  if (ratio <= 1.3) return 3;
+  if (ratio <= 2.0) return 2;
+  return 1;
+}
+
+document.getElementById('hint-btn').addEventListener('click', () => {
+  if (solved) return;
+  const path = solve(board);
+  if (!path || path.length === 0) return;
+  const tileIdx = path[0];
+  const tiles = document.querySelectorAll('#board .tile');
+  const el = tiles[tileIdx];
+  if (!el) return;
+  Sfx.hint();
+  el.classList.remove('hint-glow');
+  void el.offsetWidth; // restart animation
+  el.classList.add('hint-glow');
+  setTimeout(() => el.classList.remove('hint-glow'), 2500);
+});
 
 document.addEventListener('keydown', (e) => {
   if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) return;
@@ -357,8 +500,13 @@ function launchConfetti() {
 function init() {
   do { board = shuffle([...GOAL]); } while (isGoal(board));
   moves = 0; solved = false;
+  const opt = solve(board);
+  optimalMoves = opt ? opt.length : 0;
   document.getElementById('moves').textContent = '0';
+  document.getElementById('optimal').textContent = optimalMoves;
   document.getElementById('message').textContent = '';
+  document.getElementById('stars').innerHTML = '';
+  document.getElementById('hint-btn').disabled = false;
   document.getElementById('restart-btn').style.display = 'none';
   render(-1);
 }
