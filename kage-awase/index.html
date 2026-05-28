@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>かげあわせ 🔍</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  user-select: none; padding: 1rem;
+  background: linear-gradient(-45deg, #ee9ca7, #ffdde1, #a1c4fd, #c2e9fb, #ee9ca7);
+  background-size: 400% 400%;
+  animation: bgAnim 11s ease infinite;
+  position: relative; overflow: hidden;
+}
+@keyframes bgAnim {
+  0%,100% { background-position: 0% 50%; }
+  50%     { background-position: 100% 50%; }
+}
+.bg-cloud {
+  position: fixed; pointer-events: none;
+  font-size: 3rem; opacity: 0.18;
+  animation: drift linear infinite;
+}
+@keyframes drift {
+  from { transform: translateX(-10vw); }
+  to   { transform: translateX(110vw); }
+}
+h1 {
+  position: relative; z-index: 1;
+  font-size: clamp(1.7rem, 5.5vw, 2.8rem);
+  font-weight: 900; margin-bottom: 0.4rem;
+  color: white;
+  text-shadow: 0 0 20px rgba(255,255,255,0.6), 0 4px 8px rgba(0,0,0,0.2);
+}
+#stats {
+  position: relative; z-index: 1;
+  display: flex; gap: 0.6rem; margin-bottom: 1rem;
+  flex-wrap: wrap; justify-content: center;
+}
+.stat-pill {
+  background: rgba(255,255,255,0.3);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255,255,255,0.5);
+  border-radius: 30px; padding: 0.4rem 1.1rem;
+  color: #4a4a6a; font-size: 1rem; font-weight: 800;
+  text-shadow: 0 1px 2px rgba(255,255,255,0.4);
+}
+#shadow-area {
+  position: relative; z-index: 1;
+  width: clamp(180px, 45vw, 260px);
+  height: clamp(180px, 45vw, 260px);
+  background: rgba(255,255,255,0.4);
+  backdrop-filter: blur(10px);
+  border: 4px dashed rgba(255,255,255,0.75);
+  border-radius: 30px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+  overflow: hidden;
+}
+#shadow {
+  font-size: clamp(6rem, 18vw, 10rem);
+  filter: brightness(0) contrast(1);
+  line-height: 1; text-align: center;
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Segoe UI Symbol', sans-serif;
+  animation: shadowFloat 3s ease-in-out infinite;
+}
+@keyframes shadowFloat {
+  0%,100% { transform: translateY(0) rotate(-3deg); }
+  50%     { transform: translateY(-8px) rotate(3deg); }
+}
+#shadow.reveal {
+  animation: shadowReveal 0.6s ease-out both;
+}
+@keyframes shadowReveal {
+  0%   { filter: brightness(0); transform: scale(1); }
+  50%  { filter: brightness(0.5); transform: scale(1.2); }
+  100% { filter: brightness(1); transform: scale(1); }
+}
+#choices {
+  position: relative; z-index: 1;
+  display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;
+  margin-bottom: 1rem;
+}
+.choice {
+  width: clamp(80px, 22vw, 120px);
+  height: clamp(80px, 22vw, 120px);
+  background: linear-gradient(145deg, #ffffff, #f0f0f0);
+  border-radius: 22px;
+  border: 3px solid rgba(255,255,255,0.8);
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(2.5rem, 8vw, 4rem);
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+  transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.18s;
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif;
+}
+.choice:hover { transform: translateY(-6px) scale(1.06); box-shadow: 0 12px 28px rgba(0,0,0,0.22); }
+.choice.wrong { animation: wrongShake 0.35s; }
+.choice.correct { animation: correctPop 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+@keyframes wrongShake {
+  0%,100% { transform: translateX(0); }
+  20%,60% { transform: translateX(-10px); }
+  40%,80% { transform: translateX(10px); }
+}
+@keyframes correctPop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.35); box-shadow: 0 0 30px rgba(255,215,0,0.9); }
+  100% { transform: scale(1); }
+}
+.choice.disabled { pointer-events: none; opacity: 0.4; }
+#message {
+  position: relative; z-index: 1;
+  color: white; font-size: clamp(1.1rem, 4vw, 1.5rem);
+  font-weight: 900; min-height: 2em; text-align: center;
+  text-shadow: 0 0 15px rgba(255,255,255,0.55), 0 3px 6px rgba(0,0,0,0.2);
+}
+#start-btn {
+  position: relative; z-index: 1;
+  padding: 0.7rem 2rem;
+  font-size: 1.1rem; border: none; border-radius: 30px;
+  background: linear-gradient(135deg, #ff9a9e, #fad0c4);
+  color: #4a4a6a; font-weight: 900; cursor: pointer;
+  box-shadow: 0 6px 20px rgba(255,154,158,0.5);
+  transition: transform 0.18s;
+  margin-top: 0.4rem;
+}
+#start-btn:hover { transform: scale(1.07); }
+#back-btn, #audio-btn {
+  position: fixed; top: 1rem; z-index: 10;
+  background: rgba(255,255,255,0.35);
+  backdrop-filter: blur(8px);
+  color: #4a4a6a; border: 1px solid rgba(255,255,255,0.6);
+  border-radius: 10px; padding: 0.4rem 0.9rem;
+  cursor: pointer; font-size: 0.9rem; text-decoration: none;
+  font-weight: 700; transition: background 0.2s;
+}
+#back-btn { left: 1rem; }
+#audio-btn { right: 1rem; font-size: 1.1rem; line-height: 1; }
+#back-btn:hover, #audio-btn:hover { background: rgba(255,255,255,0.55); }
+#confetti-layer {
+  position: fixed; inset: 0; pointer-events: none; z-index: 100; display: none;
+}
+</style>
+</head>
+<body>
+<a href="../" id="back-btn">← もどる</a>
+<button id="audio-btn" aria-label="おと">🔊</button>
+
+<h1>🔍 かげあわせ</h1>
+<div id="stats">
+  <div class="stat-pill">せいかい: <span id="score">0</span></div>
+  <div class="stat-pill">のこり: <span id="timer">30</span>びょう</div>
+  <div class="stat-pill">ベスト: <span id="best">0</span></div>
+</div>
+<div id="shadow-area"><div id="shadow">❓</div></div>
+<div id="choices"></div>
+<div id="message">▶ スタートで はじまるよ！</div>
+<button id="start-btn">▶ スタート</button>
+<canvas id="confetti-layer"></canvas>
+
+<script>
+// --- Web Audio SFX ---
+const Sfx = (() => {
+  let ctx;
+  let muted = localStorage.getItem('sfx-muted') === '1';
+  const init = () => {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+  };
+  const play = (freq, dur, type='sine', vol=0.2, delay=0) => {
+    if (muted) return;
+    init();
+    const t = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(t); osc.stop(t + dur + 0.05);
+  };
+  const seq = (notes, type='triangle', vol=0.22) => {
+    let t = 0;
+    notes.forEach(([f, d]) => { play(f, d, type, vol, t); t += d * 0.9; });
+  };
+  return {
+    correct: () => seq([[659, 0.1],[988, 0.18]], 'triangle', 0.24),
+    wrong:   () => play(180, 0.15, 'sawtooth', 0.16),
+    clear:   () => seq([[523,0.14],[659,0.14],[784,0.14],[1047,0.32]], 'triangle', 0.28),
+    tick:    () => play(1200, 0.04, 'square', 0.08),
+    toggle() { muted = !muted; localStorage.setItem('sfx-muted', muted ? '1' : '0'); return muted; },
+    muted: () => muted
+  };
+})();
+(() => {
+  const btn = document.getElementById('audio-btn');
+  btn.textContent = Sfx.muted() ? '🔇' : '🔊';
+  btn.addEventListener('click', () => {
+    const m = Sfx.toggle();
+    btn.textContent = m ? '🔇' : '🔊';
+  });
+})();
+
+// Background clouds
+const CLOUDS = ['☁️','⛅','🌈'];
+for (let i = 0; i < 6; i++) {
+  const el = document.createElement('span');
+  el.className = 'bg-cloud';
+  el.textContent = CLOUDS[Math.floor(Math.random()*CLOUDS.length)];
+  el.style.top = (5 + Math.random()*85) + 'vh';
+  el.style.animationDuration = (25 + Math.random()*20) + 's';
+  el.style.animationDelay = -(Math.random()*20) + 's';
+  document.body.appendChild(el);
+}
+
+// --- Game ---
+const ANIMALS = [
+  '🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯',
+  '🦁','🐮','🐷','🐸','🐵','🐔','🐧','🦆','🦉','🦄',
+  '🐝','🦋','🐞','🐢','🐬','🐳','🦀','🐠','🦐','🦖',
+  '🍎','🍌','🍓','🍇','🍊','🍉','🍑','🍒','🥕','🌽'
+];
+const GAME_DURATION = 30; // seconds
+
+let score = 0;
+let best = +(localStorage.getItem('kage-best') || 0);
+let timeLeft = GAME_DURATION;
+let timer = null;
+let running = false;
+let currentAnswer = null;
+
+const shadowEl = document.getElementById('shadow');
+const choicesEl = document.getElementById('choices');
+const messageEl = document.getElementById('message');
+const scoreEl = document.getElementById('score');
+const timerEl = document.getElementById('timer');
+const bestEl = document.getElementById('best');
+const startBtn = document.getElementById('start-btn');
+bestEl.textContent = best;
+
+function pickUnique(n, avoid=new Set()) {
+  const pool = ANIMALS.filter(a => !avoid.has(a));
+  const picks = [];
+  while (picks.length < n && pool.length) {
+    const i = Math.floor(Math.random() * pool.length);
+    picks.push(pool.splice(i, 1)[0]);
+  }
+  return picks;
+}
+
+function nextRound() {
+  const picks = pickUnique(3);
+  currentAnswer = picks[Math.floor(Math.random() * picks.length)];
+  shadowEl.classList.remove('reveal');
+  shadowEl.textContent = currentAnswer;
+  choicesEl.innerHTML = '';
+  picks.forEach(emoji => {
+    const c = document.createElement('div');
+    c.className = 'choice';
+    c.textContent = emoji;
+    c.addEventListener('click', () => handlePick(c, emoji));
+    choicesEl.appendChild(c);
+  });
+}
+
+function handlePick(el, emoji) {
+  if (!running) return;
+  if (emoji === currentAnswer) {
+    el.classList.add('correct');
+    shadowEl.classList.add('reveal');
+    Sfx.correct();
+    score++;
+    scoreEl.textContent = score;
+    document.querySelectorAll('.choice').forEach(c => c.classList.add('disabled'));
+    setTimeout(nextRound, 520);
+  } else {
+    el.classList.add('wrong');
+    Sfx.wrong();
+    setTimeout(() => el.classList.remove('wrong'), 400);
+  }
+}
+
+function tick() {
+  timeLeft--;
+  timerEl.textContent = timeLeft;
+  if (timeLeft <= 5 && timeLeft > 0) Sfx.tick();
+  if (timeLeft <= 0) endGame();
+}
+
+function startGame() {
+  running = true;
+  score = 0; timeLeft = GAME_DURATION;
+  scoreEl.textContent = 0;
+  timerEl.textContent = timeLeft;
+  messageEl.textContent = '🔍 かげのどうぶつはどれ？';
+  startBtn.style.display = 'none';
+  nextRound();
+  clearInterval(timer);
+  timer = setInterval(tick, 1000);
+}
+
+function endGame() {
+  running = false;
+  clearInterval(timer); timer = null;
+  document.querySelectorAll('.choice').forEach(c => c.classList.add('disabled'));
+  const newBest = score > best;
+  if (newBest) {
+    best = score;
+    localStorage.setItem('kage-best', best);
+    bestEl.textContent = best;
+  }
+  messageEl.textContent = newBest
+    ? `🎉 しんきろく！ ${score}もん せいかい！ 🎉`
+    : `⏰ おわり！ ${score}もん せいかい！`;
+  Sfx.clear();
+  if (newBest || score >= 10) launchConfetti();
+  startBtn.textContent = '▶ もういちど';
+  startBtn.style.display = 'inline-block';
+}
+
+startBtn.addEventListener('click', startGame);
+
+function launchConfetti() {
+  const cv = document.getElementById('confetti-layer');
+  cv.style.display = 'block';
+  cv.width = window.innerWidth; cv.height = window.innerHeight;
+  const ctx = cv.getContext('2d');
+  const ps = Array.from({length: 100}, () => ({
+    x: Math.random()*cv.width, y: -20,
+    vx: (Math.random()-0.5)*7, vy: 1+Math.random()*5,
+    r: 6+Math.random()*10, rot: Math.random()*Math.PI*2,
+    vrot: (Math.random()-0.5)*0.2,
+    color: `hsl(${Math.random()*360},90%,60%)`,
+    type: Math.floor(Math.random()*3)
+  }));
+  function draw() {
+    ctx.clearRect(0,0,cv.width,cv.height);
+    let alive = false;
+    ps.forEach(p => {
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.07; p.rot+=p.vrot;
+      if (p.y < cv.height+30) alive = true;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.fillStyle=p.color;
+      if (p.type===0) ctx.fillRect(-p.r/2,-p.r/3,p.r,p.r*0.6);
+      else if (p.type===1) { ctx.beginPath(); ctx.arc(0,0,p.r/2,0,Math.PI*2); ctx.fill(); }
+      else {
+        ctx.beginPath();
+        for (let j=0;j<5;j++) {
+          const a=(j*4*Math.PI/5)-Math.PI/2, b=(j*4*Math.PI/5+2*Math.PI/5)-Math.PI/2;
+          j===0 ? ctx.moveTo(Math.cos(a)*p.r,Math.sin(a)*p.r) : ctx.lineTo(Math.cos(a)*p.r,Math.sin(a)*p.r);
+          ctx.lineTo(Math.cos(b)*p.r*0.4,Math.sin(b)*p.r*0.4);
+        }
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    });
+    if (alive) requestAnimationFrame(draw);
+    else cv.style.display = 'none';
+  }
+  draw();
+}
+</script>
+</body>
+</html>

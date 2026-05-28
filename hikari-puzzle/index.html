@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ひかりパズル 💡</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  user-select: none; padding: 1rem;
+  background: linear-gradient(-45deg, #0f0c29, #302b63, #24243e, #0f0c29);
+  background-size: 400% 400%;
+  animation: bgAnim 14s ease infinite;
+  position: relative; overflow: hidden;
+}
+@keyframes bgAnim {
+  0%,100% { background-position: 0% 50%; }
+  50%     { background-position: 100% 50%; }
+}
+.bg-spark {
+  position: fixed; pointer-events: none;
+  font-size: 0.7rem; color: rgba(255,255,200,0.4);
+  animation: twinkle 2.5s ease-in-out infinite alternate;
+}
+@keyframes twinkle {
+  from { opacity: 0.1; transform: scale(0.6); }
+  to   { opacity: 0.7; transform: scale(1.3); }
+}
+h1 {
+  position: relative; z-index: 1;
+  font-size: clamp(1.7rem, 5.5vw, 2.8rem);
+  font-weight: 900; margin-bottom: 0.4rem;
+  color: #ffd93d;
+  text-shadow: 0 0 25px rgba(255,217,61,0.7), 0 4px 8px rgba(0,0,0,0.3);
+}
+#stats {
+  position: relative; z-index: 1;
+  display: flex; gap: 0.6rem; margin-bottom: 0.7rem;
+  flex-wrap: wrap; justify-content: center;
+}
+.stat-pill {
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255,255,255,0.25);
+  border-radius: 30px; padding: 0.35rem 1rem;
+  color: white; font-size: 0.95rem; font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+#diff-selector {
+  position: relative; z-index: 1;
+  display: flex; gap: 0.45rem; margin-bottom: 1rem;
+}
+.diff-btn {
+  padding: 0.35rem 1rem; border: 2px solid rgba(255,255,255,0.25);
+  border-radius: 25px; background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.7); font-weight: 700; font-size: 0.88rem;
+  cursor: pointer; transition: all 0.2s;
+}
+.diff-btn:hover { background: rgba(255,255,255,0.16); color: white; }
+.diff-btn.active {
+  background: linear-gradient(135deg, #ffd93d, #ff9f43);
+  color: white; border-color: rgba(255,255,255,0.6);
+  box-shadow: 0 4px 12px rgba(255,159,67,0.5);
+}
+#board {
+  position: relative; z-index: 1;
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 20px;
+  border: 2px solid rgba(255,255,255,0.2);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+.bulb {
+  width: clamp(44px, 11vw, 68px);
+  height: clamp(44px, 11vw, 68px);
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(1.4rem, 4.5vw, 2rem);
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.34,1.56,0.64,1);
+  border: 2px solid rgba(255,255,255,0.15);
+  position: relative;
+}
+.bulb.off {
+  background: linear-gradient(145deg, #1a1a2e, #0f0f1e);
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.6);
+  color: rgba(255,255,255,0.2);
+}
+.bulb.on {
+  background: radial-gradient(circle at 30% 30%, #fff89a, #ffd93d 60%, #ff9f43);
+  box-shadow: 0 0 20px rgba(255,217,61,0.9), 0 0 40px rgba(255,217,61,0.5), inset 0 2px 4px rgba(255,255,255,0.5);
+  color: #ff6b6b;
+  border-color: rgba(255,255,255,0.5);
+}
+.bulb:hover { transform: scale(1.08); }
+.bulb:active { transform: scale(0.92); }
+.bulb.just-toggled { animation: toggleFlash 0.3s; }
+@keyframes toggleFlash {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+#message {
+  position: relative; z-index: 1;
+  font-size: clamp(1.2rem, 4.5vw, 1.8rem);
+  font-weight: 900; min-height: 2em; text-align: center;
+  margin-top: 1rem; color: #ffd93d;
+  text-shadow: 0 0 20px currentColor, 0 3px 6px rgba(0,0,0,0.3);
+}
+#action-bar {
+  position: relative; z-index: 1;
+  display: flex; gap: 0.6rem; margin-top: 0.5rem;
+}
+.action-btn {
+  padding: 0.6rem 1.4rem;
+  font-size: 1rem; border: none; border-radius: 28px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white; font-weight: 900; cursor: pointer;
+  box-shadow: 0 6px 20px rgba(118,75,162,0.5);
+  transition: transform 0.18s;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.25);
+}
+.action-btn:hover { transform: scale(1.06); }
+.action-btn.restart { background: linear-gradient(135deg, #ffd93d, #ff6b6b); box-shadow: 0 6px 20px rgba(255,107,107,0.45); }
+#back-btn, #audio-btn {
+  position: fixed; top: 1rem; z-index: 10;
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(8px);
+  color: white; border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 10px; padding: 0.4rem 0.9rem;
+  cursor: pointer; font-size: 0.9rem; text-decoration: none;
+  transition: background 0.2s;
+}
+#back-btn { left: 1rem; }
+#audio-btn { right: 1rem; font-size: 1.1rem; line-height: 1; }
+#back-btn:hover, #audio-btn:hover { background: rgba(255,255,255,0.24); }
+#confetti-layer {
+  position: fixed; inset: 0; pointer-events: none; z-index: 100; display: none;
+}
+</style>
+</head>
+<body>
+<a href="../" id="back-btn">← もどる</a>
+<button id="audio-btn" aria-label="おと">🔊</button>
+
+<h1>💡 ひかりパズル</h1>
+<div id="stats">
+  <div class="stat-pill">てすう: <span id="moves">0</span></div>
+  <div class="stat-pill">ひかり: <span id="lit">0</span></div>
+  <div class="stat-pill">クリア: <span id="clears">0</span>かい</div>
+</div>
+<div id="diff-selector">
+  <button class="diff-btn active" data-size="3">3×3</button>
+  <button class="diff-btn" data-size="4">4×4</button>
+  <button class="diff-btn" data-size="5">5×5</button>
+</div>
+<div id="board"></div>
+<div id="message"></div>
+<div id="action-bar">
+  <button class="action-btn restart" id="restart-btn">🔄 あたらしい</button>
+</div>
+<canvas id="confetti-layer"></canvas>
+
+<script>
+// --- Web Audio SFX ---
+const Sfx = (() => {
+  let ctx;
+  let muted = localStorage.getItem('sfx-muted') === '1';
+  const init = () => {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+  };
+  const play = (freq, dur, type='sine', vol=0.2, delay=0) => {
+    if (muted) return;
+    init();
+    const t = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(t); osc.stop(t + dur + 0.05);
+  };
+  const seq = (notes, type='triangle', vol=0.22) => {
+    let t = 0;
+    notes.forEach(([f, d]) => { play(f, d, type, vol, t); t += d * 0.9; });
+  };
+  return {
+    toggleOn:  () => play(660, 0.07, 'triangle', 0.14),
+    toggleOff: () => play(330, 0.07, 'square', 0.1),
+    clear: () => seq([[523,0.14],[659,0.14],[784,0.14],[1047,0.18],[1319,0.32]], 'triangle', 0.28),
+    toggle() { muted = !muted; localStorage.setItem('sfx-muted', muted ? '1' : '0'); return muted; },
+    muted: () => muted
+  };
+})();
+(() => {
+  const btn = document.getElementById('audio-btn');
+  btn.textContent = Sfx.muted() ? '🔇' : '🔊';
+  btn.addEventListener('click', () => {
+    const m = Sfx.toggle();
+    btn.textContent = m ? '🔇' : '🔊';
+  });
+})();
+
+// Background twinkles
+for (let i = 0; i < 50; i++) {
+  const el = document.createElement('span');
+  el.className = 'bg-spark';
+  el.textContent = '✦';
+  el.style.left = Math.random()*100 + 'vw';
+  el.style.top  = Math.random()*100 + 'vh';
+  el.style.animationDelay = (Math.random()*3) + 's';
+  el.style.animationDuration = (1.5 + Math.random()*3) + 's';
+  el.style.fontSize = (0.4 + Math.random()*1.3) + 'rem';
+  document.body.appendChild(el);
+}
+
+// --- Game ---
+let N = 3;
+let grid;     // 2D boolean: true = lit
+let moves = 0;
+let solved = false;
+let clears = +(localStorage.getItem('hikari-clears') || 0);
+
+const boardEl = document.getElementById('board');
+const movesEl = document.getElementById('moves');
+const litEl   = document.getElementById('lit');
+const clearsEl = document.getElementById('clears');
+const msgEl   = document.getElementById('message');
+const restartBtn = document.getElementById('restart-btn');
+
+clearsEl.textContent = clears;
+
+function toggle(x, y) {
+  if (x < 0 || x >= N || y < 0 || y >= N) return;
+  grid[y][x] = !grid[y][x];
+}
+function press(x, y) {
+  toggle(x, y); toggle(x-1, y); toggle(x+1, y); toggle(x, y-1); toggle(x, y+1);
+}
+function countLit() {
+  let c = 0;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (grid[y][x]) c++;
+  return c;
+}
+
+function generate() {
+  // Start from all-off, apply random presses → guaranteed solvable
+  grid = Array.from({length: N}, () => Array(N).fill(false));
+  const scrambleCount = N === 3 ? 4 : N === 4 ? 7 : 10;
+  const used = new Set();
+  let k = 0;
+  while (k < scrambleCount) {
+    const x = Math.floor(Math.random()*N), y = Math.floor(Math.random()*N);
+    const key = `${x},${y}`;
+    if (used.has(key)) continue;
+    used.add(key);
+    press(x, y);
+    k++;
+  }
+  // Ensure at least one light is on
+  if (countLit() === 0) press(Math.floor(N/2), Math.floor(N/2));
+}
+
+function render(toggledKey) {
+  boardEl.style.gridTemplateColumns = `repeat(${N}, 1fr)`;
+  const existing = boardEl.children;
+  const need = N * N;
+  if (existing.length !== need) {
+    boardEl.innerHTML = '';
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < N; x++) {
+        const b = document.createElement('div');
+        b.className = 'bulb off';
+        b.dataset.x = x; b.dataset.y = y;
+        b.addEventListener('click', () => handleClick(x, y));
+        boardEl.appendChild(b);
+      }
+    }
+  }
+  let i = 0;
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const b = existing[i++];
+      b.className = 'bulb ' + (grid[y][x] ? 'on' : 'off');
+      if (grid[y][x]) b.textContent = '💡'; else b.textContent = '';
+      if (toggledKey && toggledKey.has(`${x},${y}`)) b.classList.add('just-toggled');
+    }
+  }
+  litEl.textContent = countLit();
+}
+
+function handleClick(x, y) {
+  if (solved) return;
+  const affected = new Set();
+  [[x,y],[x-1,y],[x+1,y],[x,y-1],[x,y+1]].forEach(([a,b]) => {
+    if (a>=0 && a<N && b>=0 && b<N) affected.add(`${a},${b}`);
+  });
+  press(x, y);
+  moves++;
+  movesEl.textContent = moves;
+  const nowLit = countLit();
+  (nowLit < moves ? Sfx.toggleOff : Sfx.toggleOn)();
+  render(affected);
+  if (nowLit === 0) {
+    solved = true;
+    clears++;
+    localStorage.setItem('hikari-clears', clears);
+    clearsEl.textContent = clears;
+    msgEl.textContent = `🎉 ぜんぶきえた！ ${moves}てで クリア！`;
+    setTimeout(() => Sfx.clear(), 200);
+    launchConfetti();
+  } else {
+    msgEl.textContent = '';
+  }
+}
+
+function newGame() {
+  moves = 0; solved = false;
+  movesEl.textContent = 0;
+  msgEl.textContent = '💡 ぜんぶ けそう！';
+  generate();
+  render();
+}
+
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const s = +btn.dataset.size;
+    if (s === N) return;
+    N = s;
+    document.querySelectorAll('.diff-btn').forEach(b =>
+      b.classList.toggle('active', +b.dataset.size === s));
+    boardEl.innerHTML = ''; // force rebuild for size change
+    newGame();
+  });
+});
+restartBtn.addEventListener('click', newGame);
+
+function launchConfetti() {
+  const cv = document.getElementById('confetti-layer');
+  cv.style.display = 'block';
+  cv.width = window.innerWidth; cv.height = window.innerHeight;
+  const ctx = cv.getContext('2d');
+  const ps = Array.from({length: 100}, () => ({
+    x: Math.random()*cv.width, y: -20,
+    vx: (Math.random()-0.5)*7, vy: 1+Math.random()*5,
+    r: 6+Math.random()*10, rot: Math.random()*Math.PI*2,
+    vrot: (Math.random()-0.5)*0.2,
+    color: `hsl(${Math.random()*360},90%,60%)`,
+    type: Math.floor(Math.random()*3)
+  }));
+  function draw() {
+    ctx.clearRect(0,0,cv.width,cv.height);
+    let alive = false;
+    ps.forEach(p => {
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.07; p.rot+=p.vrot;
+      if (p.y < cv.height+30) alive = true;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.fillStyle=p.color;
+      if (p.type===0) ctx.fillRect(-p.r/2,-p.r/3,p.r,p.r*0.6);
+      else if (p.type===1) { ctx.beginPath(); ctx.arc(0,0,p.r/2,0,Math.PI*2); ctx.fill(); }
+      else {
+        ctx.beginPath();
+        for (let j=0;j<5;j++) {
+          const a=(j*4*Math.PI/5)-Math.PI/2, b=(j*4*Math.PI/5+2*Math.PI/5)-Math.PI/2;
+          j===0 ? ctx.moveTo(Math.cos(a)*p.r,Math.sin(a)*p.r) : ctx.lineTo(Math.cos(a)*p.r,Math.sin(a)*p.r);
+          ctx.lineTo(Math.cos(b)*p.r*0.4,Math.sin(b)*p.r*0.4);
+        }
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    });
+    if (alive) requestAnimationFrame(draw);
+    else cv.style.display = 'none';
+  }
+  draw();
+}
+
+newGame();
+</script>
+</body>
+</html>

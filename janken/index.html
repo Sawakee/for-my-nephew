@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>じゃんけん ✊</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  user-select: none; padding: 1rem;
+  background: linear-gradient(-45deg, #f093fb, #f5576c, #fee140, #fa709a, #f093fb);
+  background-size: 400% 400%;
+  animation: bgAnim 10s ease infinite;
+  position: relative; overflow: hidden;
+}
+@keyframes bgAnim {
+  0%,100% { background-position: 0% 50%; }
+  50%     { background-position: 100% 50%; }
+}
+.bg-confetti {
+  position: fixed; pointer-events: none;
+  font-size: 1.5rem; opacity: 0.2;
+  animation: bgSpin 6s linear infinite;
+}
+@keyframes bgSpin {
+  0%,100% { transform: rotate(0) scale(1); }
+  50%     { transform: rotate(360deg) scale(1.3); }
+}
+h1 {
+  position: relative; z-index: 1;
+  font-size: clamp(1.7rem, 5.5vw, 2.8rem);
+  font-weight: 900; margin-bottom: 0.4rem;
+  color: white;
+  text-shadow: 0 0 20px rgba(255,255,255,0.5), 0 4px 8px rgba(0,0,0,0.25);
+}
+#score-bar {
+  position: relative; z-index: 1;
+  display: flex; gap: 0.5rem; margin-bottom: 1rem;
+  flex-wrap: wrap; justify-content: center;
+}
+.stat-pill {
+  background: rgba(255,255,255,0.3);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255,255,255,0.5);
+  border-radius: 30px; padding: 0.35rem 1rem;
+  color: white; font-size: 0.95rem; font-weight: 800;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+#arena {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; justify-content: center; gap: 1rem;
+  margin-bottom: 1.2rem;
+  flex-wrap: wrap;
+}
+.hand-box {
+  width: clamp(130px, 35vw, 190px);
+  height: clamp(130px, 35vw, 190px);
+  background: rgba(255,255,255,0.28);
+  backdrop-filter: blur(10px);
+  border: 3px solid rgba(255,255,255,0.6);
+  border-radius: 28px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(4rem, 14vw, 7rem);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  position: relative;
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif;
+  overflow: hidden;
+}
+.hand-label {
+  position: absolute; top: -0.2em; left: 0; right: 0;
+  background: rgba(0,0,0,0.35); color: white;
+  font-size: 0.75rem; font-weight: 800; text-align: center;
+  padding: 0.2rem; letter-spacing: 0.05em;
+}
+.hand-content {
+  margin-top: 0.6em; line-height: 1;
+}
+.hand-box.shaking .hand-content {
+  animation: shake 0.2s ease-in-out infinite;
+}
+@keyframes shake {
+  0%,100% { transform: rotate(-15deg) translateY(0); }
+  50%     { transform: rotate(15deg) translateY(-8px); }
+}
+.hand-box.win {
+  animation: winPop 0.6s cubic-bezier(0.34,1.56,0.64,1);
+  box-shadow: 0 0 40px rgba(255,215,0,0.8), 0 10px 30px rgba(0,0,0,0.25);
+  border-color: #ffd93d;
+}
+.hand-box.lose {
+  opacity: 0.5; filter: grayscale(0.6);
+}
+.hand-box.draw {
+  border-color: #74c0fc;
+}
+@keyframes winPop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+#vs-badge {
+  font-size: clamp(1.5rem, 5vw, 2.2rem);
+  font-weight: 900; color: white;
+  text-shadow: 0 0 15px rgba(255,255,255,0.7), 0 3px 6px rgba(0,0,0,0.3);
+  letter-spacing: 0.05em;
+  animation: vsBeat 1s ease-in-out infinite;
+}
+@keyframes vsBeat {
+  0%,100% { transform: scale(1); }
+  50%     { transform: scale(1.15); }
+}
+#result {
+  position: relative; z-index: 1;
+  font-size: clamp(1.5rem, 5vw, 2.2rem);
+  font-weight: 900; min-height: 1.5em; text-align: center;
+  color: white;
+  text-shadow: 0 0 20px rgba(255,255,255,0.6), 0 3px 6px rgba(0,0,0,0.3);
+  margin-bottom: 1rem;
+}
+#result.win  { animation: rainbowText 1s linear infinite; }
+#result.lose { color: #ffcdd2; }
+#result.draw { color: #bbdefb; }
+@keyframes rainbowText {
+  0%   { color: #ff6b6b; }
+  25%  { color: #ffd93d; }
+  50%  { color: #6bcb77; }
+  75%  { color: #74c0fc; }
+  100% { color: #ff6b6b; }
+}
+#choices {
+  position: relative; z-index: 1;
+  display: flex; gap: 0.8rem; flex-wrap: wrap; justify-content: center;
+}
+.choice-btn {
+  width: clamp(80px, 22vw, 110px);
+  height: clamp(80px, 22vw, 110px);
+  border-radius: 22px;
+  border: 3px solid rgba(255,255,255,0.7);
+  font-size: clamp(2.5rem, 8vw, 3.5rem);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif;
+  color: white;
+}
+.choice-btn:hover { transform: translateY(-6px) scale(1.08); }
+.choice-btn:active { transform: scale(0.92); }
+.choice-btn.b-rock  { background: linear-gradient(145deg, #ff8a65, #e64a19); box-shadow: 0 8px 22px rgba(230,74,25,0.45); }
+.choice-btn.b-paper { background: linear-gradient(145deg, #4fc3f7, #0288d1); box-shadow: 0 8px 22px rgba(2,136,209,0.45); }
+.choice-btn.b-scissors { background: linear-gradient(145deg, #ba68c8, #7b1fa2); box-shadow: 0 8px 22px rgba(123,31,162,0.45); }
+.choice-btn[disabled] { opacity: 0.4; pointer-events: none; }
+#streak {
+  position: relative; z-index: 1;
+  min-height: 1.5em; margin-top: 0.6rem;
+  font-size: 1.1rem; font-weight: 800; color: white;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.25);
+}
+#back-btn, #audio-btn {
+  position: fixed; top: 1rem; z-index: 10;
+  background: rgba(255,255,255,0.3);
+  backdrop-filter: blur(8px);
+  color: white; border: 1px solid rgba(255,255,255,0.5);
+  border-radius: 10px; padding: 0.4rem 0.9rem;
+  cursor: pointer; font-size: 0.9rem; text-decoration: none;
+  font-weight: 700; transition: background 0.2s;
+}
+#back-btn { left: 1rem; }
+#audio-btn { right: 1rem; font-size: 1.1rem; line-height: 1; }
+#back-btn:hover, #audio-btn:hover { background: rgba(255,255,255,0.5); }
+#confetti-layer {
+  position: fixed; inset: 0; pointer-events: none; z-index: 100; display: none;
+}
+</style>
+</head>
+<body>
+<a href="../" id="back-btn">← もどる</a>
+<button id="audio-btn" aria-label="おと">🔊</button>
+
+<h1>✊ じゃんけん ✋</h1>
+<div id="score-bar">
+  <div class="stat-pill">かち: <span id="wins">0</span></div>
+  <div class="stat-pill">まけ: <span id="losses">0</span></div>
+  <div class="stat-pill">あいこ: <span id="draws">0</span></div>
+</div>
+
+<div id="arena">
+  <div class="hand-box" id="player-box">
+    <div class="hand-label">あなた</div>
+    <div class="hand-content" id="player-hand">❔</div>
+  </div>
+  <div id="vs-badge">VS</div>
+  <div class="hand-box" id="cpu-box">
+    <div class="hand-label">CPU</div>
+    <div class="hand-content" id="cpu-hand">❔</div>
+  </div>
+</div>
+
+<div id="result">えらんでね！</div>
+
+<div id="choices">
+  <button class="choice-btn b-rock"     data-hand="rock">✊</button>
+  <button class="choice-btn b-scissors" data-hand="scissors">✌️</button>
+  <button class="choice-btn b-paper"    data-hand="paper">✋</button>
+</div>
+
+<div id="streak"></div>
+<canvas id="confetti-layer"></canvas>
+
+<script>
+// --- Web Audio SFX ---
+const Sfx = (() => {
+  let ctx;
+  let muted = localStorage.getItem('sfx-muted') === '1';
+  const init = () => {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+  };
+  const play = (freq, dur, type='sine', vol=0.2, delay=0) => {
+    if (muted) return;
+    init();
+    const t = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(t); osc.stop(t + dur + 0.05);
+  };
+  const seq = (notes, type='triangle', vol=0.22) => {
+    let t = 0;
+    notes.forEach(([f, d]) => { play(f, d, type, vol, t); t += d * 0.9; });
+  };
+  return {
+    shake: () => play(350, 0.06, 'square', 0.1),
+    win:   () => seq([[659,0.12],[784,0.12],[1047,0.28]], 'triangle', 0.26),
+    lose:  () => seq([[330,0.14],[247,0.2]], 'sawtooth', 0.16),
+    draw:  () => play(440, 0.2, 'triangle', 0.15),
+    streak:() => seq([[880,0.08],[1175,0.08],[1568,0.2]], 'triangle', 0.22),
+    toggle() { muted = !muted; localStorage.setItem('sfx-muted', muted ? '1' : '0'); return muted; },
+    muted: () => muted
+  };
+})();
+(() => {
+  const btn = document.getElementById('audio-btn');
+  btn.textContent = Sfx.muted() ? '🔇' : '🔊';
+  btn.addEventListener('click', () => {
+    const m = Sfx.toggle();
+    btn.textContent = m ? '🔇' : '🔊';
+  });
+})();
+
+// Background confetti
+const BG = ['🎊','🎉','✨','⭐','🌟','💫'];
+for (let i = 0; i < 10; i++) {
+  const el = document.createElement('span');
+  el.className = 'bg-confetti';
+  el.textContent = BG[Math.floor(Math.random()*BG.length)];
+  el.style.left = Math.random()*100 + 'vw';
+  el.style.top = Math.random()*100 + 'vh';
+  el.style.animationDelay = -(Math.random()*6) + 's';
+  el.style.animationDuration = (4 + Math.random()*4) + 's';
+  document.body.appendChild(el);
+}
+
+// --- Game ---
+const HANDS = {
+  rock:     { emoji: '✊', label: 'グー' },
+  paper:    { emoji: '✋', label: 'パー' },
+  scissors: { emoji: '✌️', label: 'チョキ' }
+};
+const BEATS = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
+const HAND_KEYS = Object.keys(HANDS);
+
+let wins = 0, losses = 0, draws = 0, streak = 0;
+let playing = false;
+
+const playerHand = document.getElementById('player-hand');
+const cpuHand = document.getElementById('cpu-hand');
+const playerBox = document.getElementById('player-box');
+const cpuBox = document.getElementById('cpu-box');
+const resultEl = document.getElementById('result');
+const streakEl = document.getElementById('streak');
+const choiceBtns = document.querySelectorAll('.choice-btn');
+
+function setResult(text, cls) {
+  resultEl.textContent = text;
+  resultEl.className = cls;
+}
+
+function updateScore() {
+  document.getElementById('wins').textContent = wins;
+  document.getElementById('losses').textContent = losses;
+  document.getElementById('draws').textContent = draws;
+  streakEl.textContent = streak >= 2 ? `🔥 ${streak}れんしょう！` : '';
+}
+
+async function play(playerChoice) {
+  if (playing) return;
+  playing = true;
+  choiceBtns.forEach(b => b.disabled = true);
+  [playerBox, cpuBox].forEach(b => b.classList.remove('win','lose','draw'));
+  setResult('じゃんけん...', '');
+
+  // Shake phase: じゃん・けん・ぽん
+  playerHand.textContent = '✊'; cpuHand.textContent = '✊';
+  playerBox.classList.add('shaking'); cpuBox.classList.add('shaking');
+  for (let i = 0; i < 3; i++) {
+    Sfx.shake();
+    await new Promise(r => setTimeout(r, 260));
+  }
+  playerBox.classList.remove('shaking'); cpuBox.classList.remove('shaking');
+
+  // Reveal
+  const cpuChoice = HAND_KEYS[Math.floor(Math.random() * 3)];
+  playerHand.textContent = HANDS[playerChoice].emoji;
+  cpuHand.textContent    = HANDS[cpuChoice].emoji;
+
+  await new Promise(r => setTimeout(r, 200));
+
+  // Decide
+  let outcome;
+  if (playerChoice === cpuChoice) outcome = 'draw';
+  else if (BEATS[playerChoice] === cpuChoice) outcome = 'win';
+  else outcome = 'lose';
+
+  if (outcome === 'win') {
+    wins++; streak++;
+    playerBox.classList.add('win'); cpuBox.classList.add('lose');
+    setResult('🎉 かち！', 'win');
+    (streak >= 3 ? Sfx.streak : Sfx.win)();
+    if (streak >= 3) launchConfetti();
+  } else if (outcome === 'lose') {
+    losses++; streak = 0;
+    cpuBox.classList.add('win'); playerBox.classList.add('lose');
+    setResult('😢 まけ...', 'lose');
+    Sfx.lose();
+  } else {
+    draws++;
+    playerBox.classList.add('draw'); cpuBox.classList.add('draw');
+    setResult('🤝 あいこ！', 'draw');
+    Sfx.draw();
+  }
+  updateScore();
+
+  await new Promise(r => setTimeout(r, 900));
+  choiceBtns.forEach(b => b.disabled = false);
+  playing = false;
+}
+
+choiceBtns.forEach(b => {
+  b.addEventListener('click', () => play(b.dataset.hand));
+});
+
+function launchConfetti() {
+  const cv = document.getElementById('confetti-layer');
+  cv.style.display = 'block';
+  cv.width = window.innerWidth; cv.height = window.innerHeight;
+  const ctx = cv.getContext('2d');
+  const ps = Array.from({length: 90}, () => ({
+    x: Math.random()*cv.width, y: -20,
+    vx: (Math.random()-0.5)*7, vy: 1+Math.random()*5,
+    r: 6+Math.random()*10, rot: Math.random()*Math.PI*2,
+    vrot: (Math.random()-0.5)*0.2,
+    color: `hsl(${Math.random()*360},90%,60%)`,
+    type: Math.floor(Math.random()*3)
+  }));
+  function draw() {
+    ctx.clearRect(0,0,cv.width,cv.height);
+    let alive = false;
+    ps.forEach(p => {
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.07; p.rot+=p.vrot;
+      if (p.y < cv.height+30) alive = true;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.fillStyle=p.color;
+      if (p.type===0) ctx.fillRect(-p.r/2,-p.r/3,p.r,p.r*0.6);
+      else if (p.type===1) { ctx.beginPath(); ctx.arc(0,0,p.r/2,0,Math.PI*2); ctx.fill(); }
+      else {
+        ctx.beginPath();
+        for (let j=0;j<5;j++) {
+          const a=(j*4*Math.PI/5)-Math.PI/2, b=(j*4*Math.PI/5+2*Math.PI/5)-Math.PI/2;
+          j===0 ? ctx.moveTo(Math.cos(a)*p.r,Math.sin(a)*p.r) : ctx.lineTo(Math.cos(a)*p.r,Math.sin(a)*p.r);
+          ctx.lineTo(Math.cos(b)*p.r*0.4,Math.sin(b)*p.r*0.4);
+        }
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    });
+    if (alive) requestAnimationFrame(draw);
+    else cv.style.display = 'none';
+  }
+  draw();
+}
+</script>
+</body>
+</html>
