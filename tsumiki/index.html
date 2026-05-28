@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>つみつみタワー 🧱</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  user-select: none; -webkit-user-select: none; overflow: hidden;
+  height: 100vh; color: white;
+  background: linear-gradient(180deg, #fceabb 0%, #f8b500 40%, #ff7e5f 100%);
+  display: flex; flex-direction: column; align-items: center;
+}
+#hud { position: fixed; top: 0.8rem; left: 50%; transform: translateX(-50%); z-index: 5;
+  display: flex; gap: 0.6rem; }
+.pill { background: rgba(0,0,0,0.25); backdrop-filter: blur(8px); border: 2px solid rgba(255,255,255,0.5);
+  border-radius: 30px; padding: 0.35rem 1.1rem; font-weight: 900; font-size: 1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+canvas#game { display: block; touch-action: manipulation; }
+.hint { position: fixed; bottom: 1.2rem; left: 0; right: 0; text-align: center; z-index: 5;
+  font-weight: 800; font-size: 1.05rem; text-shadow: 0 2px 6px rgba(0,0,0,0.35); animation: bob 1.4s ease-in-out infinite; }
+@keyframes bob { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-6px);} }
+#overlay { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
+  background: rgba(120,60,10,0.5); backdrop-filter: blur(6px); padding: 1.5rem; }
+#overlay.hidden { display: none; }
+.panel { background: rgba(255,255,255,0.16); border: 2px solid rgba(255,255,255,0.45); backdrop-filter: blur(14px);
+  border-radius: 28px; padding: 2rem; max-width: 360px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.35); }
+.panel h2 { font-size: clamp(1.6rem,6vw,2.3rem); margin-bottom: 0.6rem; text-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+.panel .big-score { font-size: 3rem; font-weight: 900; } .panel .best { opacity: 0.9; margin-bottom: 1rem; }
+.panel p { margin-bottom: 1.2rem; line-height: 1.6; }
+.play-btn { background: linear-gradient(145deg,#4facfe,#00c2ff); color:white; border:none; font-size:1.4rem; font-weight:900;
+  padding: 0.8rem 2.4rem; border-radius: 50px; cursor: pointer; box-shadow: 0 8px 24px rgba(0,120,200,0.5); transition: transform 0.15s; }
+.play-btn:hover { transform: scale(1.06); } .play-btn:active { transform: scale(0.95); }
+#back-btn, #audio-btn { position: fixed; top: 0.8rem; z-index: 30; background: rgba(0,0,0,0.25); backdrop-filter: blur(8px);
+  color: white; border: 1px solid rgba(255,255,255,0.5); border-radius: 10px; padding: 0.4rem 0.9rem; cursor: pointer;
+  font-size: 0.9rem; text-decoration: none; font-weight: 700; }
+#back-btn { left: 0.8rem; } #audio-btn { right: 0.8rem; font-size: 1.1rem; }
+</style>
+</head>
+<body>
+<a href="../" id="back-btn">← もどる</a>
+<button id="audio-btn" aria-label="おと">🔊</button>
+<div id="hud"><div class="pill">🧱 <span id="score">0</span></div></div>
+<canvas id="game"></canvas>
+<div class="hint" id="hint">タップして つもう！</div>
+
+<div id="overlay">
+  <div class="panel" id="panel">
+    <h2>🧱 つみつみタワー</h2>
+    <p>うごく ブロックを タップして ぴったり つみあげよう！<br>はみ出すと ちいさくなるよ。なんだん つめるかな？</p>
+    <button class="play-btn" id="start-btn">あそぶ！</button>
+  </div>
+</div>
+
+<script>
+const Sfx = (() => {
+  let ctx; let muted = localStorage.getItem('sfx-muted') === '1';
+  const init = () => { if (!ctx) ctx = new (window.AudioContext||window.webkitAudioContext)(); if (ctx.state==='suspended') ctx.resume(); };
+  const play = (freq,dur,type='sine',vol=0.2,delay=0) => { if (muted) return; init();
+    const t=ctx.currentTime+delay, osc=ctx.createOscillator(), g=ctx.createGain();
+    osc.type=type; osc.frequency.value=freq;
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+0.01); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    osc.connect(g); g.connect(ctx.destination); osc.start(t); osc.stop(t+dur+0.05); };
+  const seq = (notes,type='triangle',vol=0.22) => { let t=0; notes.forEach(([f,d])=>{ play(f,d,type,vol,t); t+=d*0.9; }); };
+  let placePitch = 520;
+  return {
+    place: () => { play(placePitch,0.1,'triangle',0.22); placePitch = Math.min(placePitch+25, 1100); },
+    perfect: () => seq([[880,0.07],[1320,0.14]],'triangle',0.26),
+    resetPitch: () => { placePitch = 520; },
+    drop: () => play(160,0.3,'sawtooth',0.16),
+    record: () => seq([[660,0.09],[880,0.09],[1175,0.09],[1568,0.26]],'triangle',0.26),
+    toggle(){ muted=!muted; localStorage.setItem('sfx-muted',muted?'1':'0'); return muted; },
+    muted: () => muted
+  };
+})();
+(() => { const b=document.getElementById('audio-btn'); b.textContent=Sfx.muted()?'🔇':'🔊';
+  b.addEventListener('click',(e)=>{ e.stopPropagation(); b.textContent=Sfx.toggle()?'🔇':'🔊'; }); })();
+
+const cv = document.getElementById('game');
+const ctx = cv.getContext('2d');
+const scoreEl = document.getElementById('score');
+const overlay = document.getElementById('overlay');
+const panel = document.getElementById('panel');
+const hint = document.getElementById('hint');
+
+let W, H, BH = 38; // block height
+function resize(){ W = cv.width = innerWidth; H = cv.height = innerHeight; }
+resize(); addEventListener('resize', resize);
+
+const COLORS = ['#ff6b6b','#feca57','#48dbfb','#1dd1a1','#5f27cd','#ff9ff3','#54a0ff','#00d2d3'];
+let stack, current, score, running, fallers;
+
+function baseY(){ return H - 70; } // ground line for first block top
+
+function startGame() {
+  Sfx.resetPitch();
+  score = 0; running = true; fallers = [];
+  scoreEl.textContent = '0';
+  overlay.classList.add('hidden');
+  hint.style.display = 'block';
+  const w = Math.min(180, W*0.42);
+  const x = (W - w) / 2;
+  stack = [{ x, w, y: baseY(), color: COLORS[0] }];
+  spawnBlock();
+  if (!rafRunning) { rafRunning = true; requestAnimationFrame(loop); }
+}
+
+function spawnBlock() {
+  const top = stack[stack.length-1];
+  const w = top.w;
+  const speed = 2.2 + Math.min(score * 0.12, 4.5);
+  const fromLeft = stack.length % 2 === 0;
+  current = {
+    x: fromLeft ? -w : W, w,
+    y: top.y - BH,           // hovering one level above current top
+    color: COLORS[stack.length % COLORS.length],
+    dir: fromLeft ? 1 : -1, speed
+  };
+}
+
+function place() {
+  if (!running || !current) return;
+  const top = stack[stack.length-1];
+  const left = Math.max(current.x, top.x);
+  const right = Math.min(current.x + current.w, top.x + top.w);
+  const overlap = right - left;
+  if (overlap <= 0) { // total miss
+    fallers.push({ ...current, vy: 0 });
+    current = null; gameOver(); return;
+  }
+  // trim overhang; spawn the cut piece as a faller
+  const cutLeft = left - current.x;
+  const cutRight = (current.x + current.w) - right;
+  if (cutRight > 0.5) fallers.push({ x: right, w: cutRight, y: current.y, color: current.color, vy: 0, vx: 1.5 });
+  if (cutLeft > 0.5) fallers.push({ x: current.x, w: cutLeft, y: current.y, color: current.color, vy: 0, vx: -1.5 });
+
+  const perfect = overlap > top.w - 4;
+  stack.push({ x: left, w: overlap, y: current.y, color: current.color });
+  score++; scoreEl.textContent = score;
+  perfect ? Sfx.perfect() : Sfx.place();
+  if (perfect) flash = 6;
+  current = null;
+  hint.style.display = 'none';
+  spawnBlock();
+}
+
+let flash = 0;
+function gameOver() {
+  running = false;
+  Sfx.drop();
+  const best = +(localStorage.getItem('tsumiki-best')||0);
+  const isRecord = score > best;
+  if (isRecord) localStorage.setItem('tsumiki-best', score);
+  setTimeout(() => {
+    panel.innerHTML = `
+      <h2>${isRecord?'🏆 しんきろく！':'🧱 たおれた！'}</h2>
+      <div class="big-score">${score} だん</div>
+      <div class="best">ベスト: ${Math.max(score,best)} だん</div>
+      <p>${score>=15?'たかいタワー めいじん！🏆':score>=7?'おみごと！🎉':'もういちど ちょうせん！'}</p>
+      <button class="play-btn" id="again-btn">もういちど！</button>`;
+    overlay.classList.remove('hidden');
+    document.getElementById('again-btn').addEventListener('click', startGame);
+    if (isRecord && score>0) Sfx.record();
+  }, 650);
+}
+
+let rafRunning = false;
+function loop() {
+  ctx.clearRect(0,0,W,H);
+
+  // camera: keep top of stack at a comfortable height
+  const topY = stack[stack.length-1].y;
+  const desired = H * 0.38;
+  const camShift = topY < desired ? desired - topY : 0;
+
+  ctx.save();
+  ctx.translate(0, camShift);
+
+  // ground
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(0, baseY()+BH, W, H);
+
+  // stack
+  stack.forEach(b => drawBlock(b.x, b.y, b.w, b.color));
+
+  // moving block
+  if (current && running) {
+    current.x += current.speed * current.dir;
+    if (current.x + current.w > W) { current.x = W - current.w; current.dir = -1; }
+    if (current.x < 0) { current.x = 0; current.dir = 1; }
+    drawBlock(current.x, current.y, current.w, current.color);
+  }
+
+  // falling cut pieces
+  fallers.forEach(f => { f.vy += 0.6; f.y += f.vy; if (f.vx) f.x += f.vx; drawBlock(f.x, f.y, f.w, f.color); });
+  fallers = fallers.filter(f => f.y < H + 200);
+
+  ctx.restore();
+
+  if (flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash/30})`; ctx.fillRect(0,0,W,H); flash--; }
+
+  requestAnimationFrame(loop);
+}
+
+function drawBlock(x, y, w, color) {
+  ctx.fillStyle = color;
+  roundRect(x, y, w, BH-3, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.22)';
+  roundRect(x, y, w, (BH-3)*0.4, 7); ctx.fill();
+}
+function roundRect(x,y,w,h,r){ r=Math.min(r,w/2,h/2); ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+function tap(e){
+  if (e.target.closest('#back-btn,#audio-btn,#overlay')) return;
+  place();
+}
+addEventListener('pointerdown', tap);
+addEventListener('keydown', e => { if (e.code==='Space'){ e.preventDefault(); place(); } });
+
+document.getElementById('start-btn').addEventListener('click', (e)=>{ e.stopPropagation(); startGame(); });
+</script>
+</body>
+</html>

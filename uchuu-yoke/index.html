@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>うちゅうロケット 🚀</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  user-select: none; -webkit-user-select: none; overflow: hidden;
+  height: 100vh; color: white;
+  background: radial-gradient(120% 100% at 50% 0%, #2b1055 0%, #0b0524 60%, #04010f 100%);
+  display: flex; flex-direction: column; align-items: center;
+}
+#hud { position: fixed; top: 0.8rem; left: 50%; transform: translateX(-50%); z-index: 5; display: flex; gap: 0.6rem; align-items: center; }
+.pill { background: rgba(255,255,255,0.14); backdrop-filter: blur(8px); border: 2px solid rgba(255,255,255,0.4);
+  border-radius: 30px; padding: 0.35rem 1.1rem; font-weight: 900; font-size: 1rem; text-shadow: 0 0 12px rgba(150,180,255,0.6); }
+#lives { font-size: 1.3rem; letter-spacing: 2px; }
+canvas#game { display: block; touch-action: none; }
+#overlay { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
+  background: rgba(10,5,40,0.6); backdrop-filter: blur(6px); padding: 1.5rem; }
+#overlay.hidden { display: none; }
+.panel { background: rgba(255,255,255,0.1); border: 2px solid rgba(160,170,255,0.4); backdrop-filter: blur(14px);
+  border-radius: 28px; padding: 2rem; max-width: 360px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.45); }
+.panel h2 { font-size: clamp(1.6rem,6vw,2.3rem); margin-bottom: 0.6rem; text-shadow: 0 0 18px rgba(150,180,255,0.7); }
+.panel .big-score { font-size: 3rem; font-weight: 900; } .panel .best { opacity: 0.9; margin-bottom: 1rem; }
+.panel p { margin-bottom: 1.2rem; line-height: 1.6; }
+.play-btn { background: linear-gradient(145deg,#7f7fd5,#86a8e7,#91eae4); color:#1a1a40; border:none; font-size:1.4rem; font-weight:900;
+  padding: 0.8rem 2.4rem; border-radius: 50px; cursor: pointer; box-shadow: 0 8px 24px rgba(134,168,231,0.5); transition: transform 0.15s; }
+.play-btn:hover { transform: scale(1.06); } .play-btn:active { transform: scale(0.95); }
+#back-btn, #audio-btn { position: fixed; top: 0.8rem; z-index: 30; background: rgba(255,255,255,0.14); backdrop-filter: blur(8px);
+  color: white; border: 1px solid rgba(255,255,255,0.4); border-radius: 10px; padding: 0.4rem 0.9rem; cursor: pointer;
+  font-size: 0.9rem; text-decoration: none; font-weight: 700; }
+#back-btn { left: 0.8rem; } #audio-btn { right: 0.8rem; font-size: 1.1rem; }
+.hint { position: fixed; bottom: 1.2rem; left: 0; right: 0; text-align: center; z-index: 5; font-weight: 700; opacity: 0.85;
+  text-shadow: 0 0 10px rgba(150,180,255,0.6); }
+</style>
+</head>
+<body>
+<a href="../" id="back-btn">← もどる</a>
+<button id="audio-btn" aria-label="おと">🔊</button>
+<div id="hud"><div class="pill">⭐ <span id="score">0</span></div><div id="lives">❤️❤️❤️</div></div>
+<canvas id="game"></canvas>
+<div class="hint" id="hint">ゆびで よこに うごかしてね</div>
+
+<div id="overlay">
+  <div class="panel" id="panel">
+    <h2>🚀 うちゅうロケット</h2>
+    <p>ロケットを よこに うごかして ⭐ ほしを あつめよう！<br>☄️ いん石に ぶつかると ❤️ が へるよ。</p>
+    <button class="play-btn" id="start-btn">あそぶ！</button>
+  </div>
+</div>
+
+<script>
+const Sfx = (() => {
+  let ctx; let muted = localStorage.getItem('sfx-muted') === '1';
+  const init = () => { if (!ctx) ctx = new (window.AudioContext||window.webkitAudioContext)(); if (ctx.state==='suspended') ctx.resume(); };
+  const play = (freq,dur,type='sine',vol=0.2,delay=0) => { if (muted) return; init();
+    const t=ctx.currentTime+delay, osc=ctx.createOscillator(), g=ctx.createGain();
+    osc.type=type; osc.frequency.value=freq;
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+0.01); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    osc.connect(g); g.connect(ctx.destination); osc.start(t); osc.stop(t+dur+0.05); };
+  const seq = (notes,type='triangle',vol=0.22) => { let t=0; notes.forEach(([f,d])=>{ play(f,d,type,vol,t); t+=d*0.9; }); };
+  const noise = (dur=0.3,vol=0.3) => { if (muted) return; init();
+    const n=ctx.sampleRate*dur, buf=ctx.createBuffer(1,n,ctx.sampleRate), d=buf.getChannelData(0);
+    for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+    const src=ctx.createBufferSource(); src.buffer=buf; const g=ctx.createGain(); g.gain.value=vol;
+    src.connect(g); g.connect(ctx.destination); src.start(); };
+  return {
+    star: () => seq([[880,0.06],[1320,0.1]],'triangle',0.2),
+    hit: () => { noise(0.35,0.3); play(110,0.35,'sawtooth',0.22); },
+    end: () => seq([[784,0.14],[587,0.14],[440,0.28]],'sawtooth',0.2),
+    record: () => seq([[660,0.09],[880,0.09],[1175,0.09],[1568,0.26]],'triangle',0.26),
+    toggle(){ muted=!muted; localStorage.setItem('sfx-muted',muted?'1':'0'); return muted; },
+    muted: () => muted
+  };
+})();
+(() => { const b=document.getElementById('audio-btn'); b.textContent=Sfx.muted()?'🔇':'🔊';
+  b.addEventListener('click',(e)=>{ e.stopPropagation(); b.textContent=Sfx.toggle()?'🔇':'🔊'; }); })();
+
+const cv = document.getElementById('game');
+const ctx = cv.getContext('2d');
+const scoreEl = document.getElementById('score');
+const livesEl = document.getElementById('lives');
+const overlay = document.getElementById('overlay');
+const panel = document.getElementById('panel');
+const hint = document.getElementById('hint');
+let W,H; function resize(){ W=cv.width=innerWidth; H=cv.height=innerHeight; } resize(); addEventListener('resize',resize);
+
+// starfield background
+const stars = Array.from({length:80},()=>({ x:Math.random(), y:Math.random(), z:0.3+Math.random()*0.9, r:Math.random()*1.6+0.4 }));
+
+let ship, objs, particles, score, lives, running, lastSpawn, elapsed, invuln;
+
+function startGame(){
+  score=0; lives=3; running=true; objs=[]; particles=[]; lastSpawn=0; elapsed=0; invuln=0;
+  ship = { x: W/2, y: H-110, w: 54 };
+  scoreEl.textContent='0'; livesEl.textContent='❤️❤️❤️';
+  overlay.classList.add('hidden'); hint.style.display='block';
+  if (!rafRunning){ rafRunning=true; last=performance.now(); requestAnimationFrame(loop); }
+}
+
+function spawn(){
+  const isStar = Math.random() < 0.62;
+  const x = 30 + Math.random()*(W-60);
+  const speed = (isStar?2.2:3.0) + Math.min(elapsed/8, 5) + Math.random()*1.5;
+  objs.push({ x, y:-30, r:isStar?16:24, star:isStar, vy:speed, spin:Math.random()*6.28, vspin:(Math.random()-0.5)*0.2 });
+}
+
+let last=0, rafRunning=false;
+function loop(now){
+  const dt = Math.min((now-last)/16.67, 3); last=now;
+  ctx.clearRect(0,0,W,H);
+
+  // bg stars
+  ctx.fillStyle='#fff';
+  stars.forEach(s=>{ if(running){ s.y += s.z*0.004*dt; if(s.y>1) s.y-=1; }
+    ctx.globalAlpha=s.z*0.7; ctx.beginPath(); ctx.arc(s.x*W, s.y*H, s.r, 0, 6.28); ctx.fill(); });
+  ctx.globalAlpha=1;
+
+  if (running) {
+    elapsed += dt/60;
+    if (now-lastSpawn > Math.max(720 - elapsed*14, 360)) { spawn(); lastSpawn=now; }
+  }
+
+  // objects
+  objs.forEach(o=>{ o.y += o.vy*dt; o.spin += o.vspin*dt; });
+  // collisions
+  if (running) objs.forEach(o=>{
+    if (o.dead) return;
+    const dx=o.x-ship.x, dy=o.y-ship.y;
+    if (dx*dx+dy*dy < (o.r+ship.w*0.42)**2) {
+      if (o.star) { o.dead=true; score++; scoreEl.textContent=score; Sfx.star(); burst(o.x,o.y,'#ffe066'); }
+      else if (invuln<=0) { o.dead=true; loseLife(); burst(o.x,o.y,'#ff6b6b'); invuln=70; }
+    }
+  });
+  objs = objs.filter(o=> !o.dead && o.y < H+40);
+
+  // draw objects
+  objs.forEach(o=>{ ctx.save(); ctx.translate(o.x,o.y); ctx.rotate(o.spin);
+    ctx.font=(o.r*2)+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(o.star?'⭐':'☄️',0,0); ctx.restore(); });
+
+  // particles
+  particles.forEach(p=>{ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=0.15*dt; p.life-=dt; });
+  particles = particles.filter(p=>p.life>0);
+  particles.forEach(p=>{ ctx.globalAlpha=Math.max(p.life/p.max,0); ctx.fillStyle=p.color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,6.28); ctx.fill(); }); ctx.globalAlpha=1;
+
+  // ship
+  if (invuln>0) invuln-=dt;
+  if (running || lives>0) drawShip();
+
+  requestAnimationFrame(loop);
+}
+
+function drawShip(){
+  ctx.save(); ctx.translate(ship.x, ship.y);
+  if (invuln>0 && Math.floor(invuln/6)%2===0) ctx.globalAlpha=0.4;
+  // flame
+  ctx.fillStyle='rgba(255,170,40,0.9)';
+  ctx.beginPath(); ctx.moveTo(-8,18); ctx.lineTo(0,30+Math.random()*10); ctx.lineTo(8,18); ctx.closePath(); ctx.fill();
+  ctx.font='44px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('🚀', 0, -2);
+  ctx.restore();
+}
+
+function loseLife(){
+  lives--; livesEl.textContent='❤️'.repeat(Math.max(lives,0))||'💔'; Sfx.hit();
+  if (lives<=0) gameOver();
+}
+function burst(x,y,color){ for(let i=0;i<14;i++) particles.push({x,y,vx:(Math.random()-0.5)*8,vy:(Math.random()-0.5)*8,r:2+Math.random()*4,color,life:20+Math.random()*16,max:36}); }
+
+function gameOver(){
+  running=false; hint.style.display='none';
+  const best=+(localStorage.getItem('uchuu-best')||0); const isRecord=score>best;
+  if(isRecord) localStorage.setItem('uchuu-best',score);
+  setTimeout(()=>{
+    panel.innerHTML = `
+      <h2>${isRecord?'🏆 しんきろく！':'🚀 ミッションかんりょう！'}</h2>
+      <div class="big-score">⭐ ${score}</div>
+      <div class="best">ベスト: ${Math.max(score,best)}</div>
+      <p>${score>=30?'うちゅう めいじん！🏆':score>=15?'おみごと！🎉':'もういちど ちょうせん！'}</p>
+      <button class="play-btn" id="again-btn">もういちど！</button>`;
+    overlay.classList.remove('hidden');
+    document.getElementById('again-btn').addEventListener('click',(e)=>{e.stopPropagation();startGame();});
+    if(isRecord && score>0) Sfx.record(); else Sfx.end();
+  }, 500);
+}
+
+// controls: pointer moves ship horizontally
+function moveTo(clientX){ if(!running) return; ship.x = Math.max(ship.w*0.4, Math.min(W-ship.w*0.4, clientX)); }
+cv.addEventListener('pointerdown', e=>moveTo(e.clientX));
+cv.addEventListener('pointermove', e=>{ if(e.buttons||e.pointerType!=='mouse') moveTo(e.clientX); });
+let keys={};
+addEventListener('keydown', e=>{ keys[e.key]=true; });
+addEventListener('keyup', e=>{ keys[e.key]=false; });
+setInterval(()=>{ if(!running) return; const step=14;
+  if(keys['ArrowLeft']) moveTo(ship.x-step); if(keys['ArrowRight']) moveTo(ship.x+step); }, 16);
+
+document.getElementById('start-btn').addEventListener('click',(e)=>{e.stopPropagation();startGame();});
+</script>
+</body>
+</html>

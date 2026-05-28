@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>いろあて 🎨</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; }
+body {
+  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  user-select: none; -webkit-user-select: none;
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; padding: 3.5rem 1rem 2rem; color: white;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+h1 { font-size: clamp(1.5rem,5vw,2.3rem); font-weight: 900; text-shadow: 0 3px 6px rgba(0,0,0,0.25); margin-bottom: 0.4rem; }
+#hud { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; justify-content: center; }
+.pill { background: rgba(255,255,255,0.25); backdrop-filter: blur(10px); border: 2px solid rgba(255,255,255,0.5);
+  border-radius: 30px; padding: 0.3rem 1rem; font-weight: 900; font-size: 0.95rem; text-shadow: 0 2px 4px rgba(0,0,0,0.2); min-width: 92px; }
+.pill.time.low { animation: pulseRed 0.6s infinite; }
+@keyframes pulseRed { 0%,100%{background:rgba(255,80,80,0.35);} 50%{background:rgba(255,80,80,0.7);} }
+#prompt { font-size: clamp(1.6rem,6vw,2.6rem); font-weight: 900; margin: 0.4rem 0 1.2rem;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.35); min-height: 1.4em; text-align: center; }
+#prompt .target { padding: 0.1em 0.4em; border-radius: 12px; background: rgba(255,255,255,0.25); }
+#balloons { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem;
+  width: 100%; max-width: 420px; }
+.balloon { aspect-ratio: 1; border-radius: 50% 50% 48% 48%; cursor: pointer; position: relative;
+  border: 4px solid rgba(255,255,255,0.6); box-shadow: 0 10px 24px rgba(0,0,0,0.3) inset, 0 8px 20px rgba(0,0,0,0.25);
+  transition: transform 0.12s; }
+.balloon::after { content:''; position:absolute; top:14%; left:20%; width:26%; height:22%; border-radius:50%; background:rgba(255,255,255,0.55); }
+.balloon:hover { transform: translateY(-6px) scale(1.05); }
+.balloon:active { transform: scale(0.9); }
+.balloon.pop { animation: pop 0.35s forwards; }
+@keyframes pop { to { transform: scale(0); opacity: 0; } }
+.balloon.shake { animation: shake 0.4s; }
+@keyframes shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-8px);} 75%{transform:translateX(8px);} }
+#feedback { font-size: 1.5rem; font-weight: 900; min-height: 1.5em; margin-top: 1rem; text-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+#overlay { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
+  background: rgba(40,20,80,0.55); backdrop-filter: blur(6px); padding: 1.5rem; }
+#overlay.hidden { display: none; }
+.panel { background: rgba(255,255,255,0.16); border: 2px solid rgba(255,255,255,0.4); backdrop-filter: blur(14px);
+  border-radius: 28px; padding: 2rem; max-width: 360px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.35); }
+.panel h2 { font-size: clamp(1.6rem,6vw,2.3rem); margin-bottom: 0.6rem; text-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+.panel .big-score { font-size: 3rem; font-weight: 900; }
+.panel .best { opacity: 0.9; margin-bottom: 1rem; }
+.panel p { margin-bottom: 1.2rem; line-height: 1.6; }
+.play-btn { background: linear-gradient(145deg,#ffd93d,#ff9f1c); color:#4a3500; border:none; font-size:1.4rem; font-weight:900;
+  padding: 0.8rem 2.4rem; border-radius: 50px; cursor: pointer; box-shadow: 0 8px 24px rgba(255,159,28,0.5); transition: transform 0.15s; }
+.play-btn:hover { transform: scale(1.06); } .play-btn:active { transform: scale(0.95); }
+#back-btn, #audio-btn { position: fixed; top: 0.8rem; z-index: 30; background: rgba(255,255,255,0.3); backdrop-filter: blur(8px);
+  color: white; border: 1px solid rgba(255,255,255,0.5); border-radius: 10px; padding: 0.4rem 0.9rem; cursor: pointer;
+  font-size: 0.9rem; text-decoration: none; font-weight: 700; }
+#back-btn { left: 0.8rem; } #audio-btn { right: 0.8rem; font-size: 1.1rem; }
+#confetti-layer { position: fixed; inset: 0; pointer-events: none; z-index: 25; display: none; }
+</style>
+</head>
+<body>
+<a href="../" id="back-btn">← もどる</a>
+<button id="audio-btn" aria-label="おと">🔊</button>
+
+<h1>🎨 いろあて</h1>
+<div id="hud">
+  <div class="pill">スコア <span id="score">0</span></div>
+  <div class="pill time" id="time-pill">のこり <span id="time">30</span></div>
+</div>
+<div id="prompt"></div>
+<div id="balloons"></div>
+<div id="feedback"></div>
+
+<div id="overlay">
+  <div class="panel" id="panel">
+    <h2>🎨 いろあて</h2>
+    <p>いわれた いろの ふうせんを タップ！<br>30びょうで なんもん せいかいできるかな？</p>
+    <button class="play-btn" id="start-btn">あそぶ！</button>
+  </div>
+</div>
+
+<canvas id="confetti-layer"></canvas>
+<script>
+const Sfx = (() => {
+  let ctx; let muted = localStorage.getItem('sfx-muted') === '1';
+  const init = () => { if (!ctx) ctx = new (window.AudioContext||window.webkitAudioContext)(); if (ctx.state==='suspended') ctx.resume(); };
+  const play = (freq,dur,type='sine',vol=0.2,delay=0) => { if (muted) return; init();
+    const t=ctx.currentTime+delay, osc=ctx.createOscillator(), g=ctx.createGain();
+    osc.type=type; osc.frequency.value=freq;
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+0.01); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    osc.connect(g); g.connect(ctx.destination); osc.start(t); osc.stop(t+dur+0.05); };
+  const seq = (notes,type='triangle',vol=0.22) => { let t=0; notes.forEach(([f,d])=>{ play(f,d,type,vol,t); t+=d*0.9; }); };
+  return {
+    pop: () => seq([[700,0.06],[1050,0.1]],'triangle',0.22),
+    wrong: () => play(180,0.22,'sawtooth',0.15),
+    tick: () => play(880,0.05,'square',0.12),
+    start: () => seq([[523,0.1],[659,0.1],[784,0.18]],'triangle',0.22),
+    end: () => seq([[784,0.14],[587,0.14],[440,0.28]],'sawtooth',0.2),
+    record: () => seq([[660,0.09],[880,0.09],[1175,0.09],[1568,0.26]],'triangle',0.26),
+    toggle(){ muted=!muted; localStorage.setItem('sfx-muted',muted?'1':'0'); return muted; },
+    muted: () => muted
+  };
+})();
+(() => { const b=document.getElementById('audio-btn'); b.textContent=Sfx.muted()?'🔇':'🔊';
+  b.addEventListener('click',()=>{ b.textContent=Sfx.toggle()?'🔇':'🔊'; }); })();
+
+const COLORS = [
+  { name:'あか',   css:'#e74c3c' },
+  { name:'あお',   css:'#3498db' },
+  { name:'きいろ', css:'#f1c40f' },
+  { name:'みどり', css:'#2ecc71' },
+  { name:'オレンジ', css:'#e67e22' },
+  { name:'むらさき', css:'#9b59b6' },
+  { name:'ピンク', css:'#ff6fb5' },
+  { name:'みずいろ', css:'#48dbfb' },
+];
+const promptEl = document.getElementById('prompt');
+const balloonsEl = document.getElementById('balloons');
+const feedbackEl = document.getElementById('feedback');
+const scoreEl = document.getElementById('score');
+const timeEl = document.getElementById('time');
+const timePill = document.getElementById('time-pill');
+const overlay = document.getElementById('overlay');
+const panel = document.getElementById('panel');
+
+let score=0, timeLeft=30, running=false, locked=false, target=null, clockTimer=null;
+function rand(n){ return Math.floor(Math.random()*n); }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=rand(i+1); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function bestScore(){ return +(localStorage.getItem('iro-best')||0); }
+
+function newRound() {
+  locked = false;
+  const pool = shuffle([...COLORS]).slice(0, 6);
+  target = pool[rand(pool.length)];
+  promptEl.innerHTML = `<span class="target" style="color:${target.css}">${target.name}</span> を タップ！`;
+  balloonsEl.innerHTML = '';
+  shuffle(pool).forEach(c => {
+    const b = document.createElement('div');
+    b.className = 'balloon';
+    b.style.background = `radial-gradient(circle at 35% 30%, ${c.css}, ${shade(c.css,-30)})`;
+    b.addEventListener('click', () => pick(c, b));
+    balloonsEl.appendChild(b);
+  });
+}
+function shade(hex, amt){
+  const n=parseInt(hex.slice(1),16); let r=(n>>16)+amt, g=((n>>8)&255)+amt, b=(n&255)+amt;
+  r=Math.max(0,Math.min(255,r)); g=Math.max(0,Math.min(255,g)); b=Math.max(0,Math.min(255,b));
+  return '#'+((r<<16)|(g<<8)|b).toString(16).padStart(6,'0');
+}
+
+function pick(c, el) {
+  if (!running || locked) return;
+  if (c.name === target.name) {
+    locked = true;
+    el.classList.add('pop');
+    score++; scoreEl.textContent = score;
+    feedbackEl.textContent = ['せいかい！🎉','ピンポン！🔔','すごい！⭐'][rand(3)];
+    Sfx.pop();
+    setTimeout(() => { feedbackEl.textContent=''; newRound(); }, 450);
+  } else {
+    el.classList.add('shake');
+    feedbackEl.textContent = 'ちがうよ！';
+    Sfx.wrong();
+    setTimeout(()=>el.classList.remove('shake'), 400);
+  }
+}
+
+function startGame() {
+  score=0; timeLeft=30; running=true; locked=false;
+  scoreEl.textContent='0'; timeEl.textContent='30';
+  feedbackEl.textContent=''; timePill.classList.remove('low');
+  overlay.classList.add('hidden');
+  Sfx.start();
+  newRound();
+  clockTimer = setInterval(() => {
+    timeLeft--; timeEl.textContent = timeLeft;
+    if (timeLeft<=5 && timeLeft>0){ timePill.classList.add('low'); Sfx.tick(); }
+    if (timeLeft<=0) endGame();
+  }, 1000);
+}
+
+function endGame() {
+  running=false; clearInterval(clockTimer); timePill.classList.remove('low');
+  const best=bestScore(); const isRecord=score>best;
+  if (isRecord) localStorage.setItem('iro-best', score);
+  const msg = score===0 ? 'またチャレンジしてね！' : score>=15 ? 'いろはかせ！🏆' : score>=8 ? 'おみごと！🎉' : 'よくできました！';
+  panel.innerHTML = `
+    <h2>${isRecord?'🏆 しんきろく！':'🎨 おしまい！'}</h2>
+    <div class="big-score">${score} もん</div>
+    <div class="best">ベスト: ${Math.max(score,best)} もん</div>
+    <p>${msg}</p>
+    <button class="play-btn" id="again-btn">もういちど！</button>`;
+  overlay.classList.remove('hidden');
+  document.getElementById('again-btn').addEventListener('click', startGame);
+  if (isRecord && score>0){ Sfx.record(); launchConfetti(); } else Sfx.end();
+}
+
+document.getElementById('start-btn').addEventListener('click', startGame);
+
+function launchConfetti() {
+  const cv=document.getElementById('confetti-layer'); cv.style.display='block';
+  cv.width=innerWidth; cv.height=innerHeight; const ctx=cv.getContext('2d');
+  const ps=Array.from({length:90},()=>({x:Math.random()*cv.width,y:-20,vx:(Math.random()-0.5)*7,vy:1+Math.random()*5,r:6+Math.random()*10,rot:Math.random()*6.28,vrot:(Math.random()-0.5)*0.2,color:`hsl(${Math.random()*360},90%,60%)`,type:rand(3)}));
+  (function draw(){ ctx.clearRect(0,0,cv.width,cv.height); let alive=false;
+    ps.forEach(p=>{ p.x+=p.vx;p.y+=p.vy;p.vy+=0.07;p.rot+=p.vrot; if(p.y<cv.height+30)alive=true;
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.fillStyle=p.color;
+      if(p.type===0)ctx.fillRect(-p.r/2,-p.r/3,p.r,p.r*0.6);
+      else if(p.type===1){ctx.beginPath();ctx.arc(0,0,p.r/2,0,6.28);ctx.fill();}
+      else{ctx.beginPath();for(let j=0;j<5;j++){const a=(j*4*Math.PI/5)-Math.PI/2,b=(j*4*Math.PI/5+2*Math.PI/5)-Math.PI/2;j===0?ctx.moveTo(Math.cos(a)*p.r,Math.sin(a)*p.r):ctx.lineTo(Math.cos(a)*p.r,Math.sin(a)*p.r);ctx.lineTo(Math.cos(b)*p.r*0.4,Math.sin(b)*p.r*0.4);}ctx.closePath();ctx.fill();}
+      ctx.restore(); });
+    if(alive)requestAnimationFrame(draw); else cv.style.display='none'; })();
+}
+</script>
+</body>
+</html>

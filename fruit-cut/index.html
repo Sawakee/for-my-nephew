@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>フルーツカット 🍉</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  user-select: none; -webkit-user-select: none; overflow: hidden;
+  height: 100vh; color: white;
+  background: linear-gradient(180deg, #2af598 0%, #009efd 100%);
+  display: flex; flex-direction: column; align-items: center;
+}
+#hud { position: fixed; top: 0.8rem; left: 50%; transform: translateX(-50%); z-index: 5;
+  display: flex; gap: 0.6rem; align-items: center; }
+.pill { background: rgba(0,0,0,0.25); backdrop-filter: blur(8px); border: 2px solid rgba(255,255,255,0.5);
+  border-radius: 30px; padding: 0.35rem 1.1rem; font-weight: 900; font-size: 1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+#lives { font-size: 1.4rem; letter-spacing: 2px; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+canvas#game { display: block; touch-action: none; }
+#overlay { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,80,90,0.5); backdrop-filter: blur(6px); padding: 1.5rem; }
+#overlay.hidden { display: none; }
+.panel { background: rgba(255,255,255,0.16); border: 2px solid rgba(255,255,255,0.45); backdrop-filter: blur(14px);
+  border-radius: 28px; padding: 2rem; max-width: 360px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.35); }
+.panel h2 { font-size: clamp(1.6rem,6vw,2.3rem); margin-bottom: 0.6rem; text-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+.panel .big-score { font-size: 3rem; font-weight: 900; } .panel .best { opacity: 0.9; margin-bottom: 1rem; }
+.panel p { margin-bottom: 1.2rem; line-height: 1.6; }
+.play-btn { background: linear-gradient(145deg,#ffd93d,#ff9f1c); color:#4a3500; border:none; font-size:1.4rem; font-weight:900;
+  padding: 0.8rem 2.4rem; border-radius: 50px; cursor: pointer; box-shadow: 0 8px 24px rgba(255,159,28,0.5); transition: transform 0.15s; }
+.play-btn:hover { transform: scale(1.06); } .play-btn:active { transform: scale(0.95); }
+#back-btn, #audio-btn { position: fixed; top: 0.8rem; z-index: 30; background: rgba(0,0,0,0.25); backdrop-filter: blur(8px);
+  color: white; border: 1px solid rgba(255,255,255,0.5); border-radius: 10px; padding: 0.4rem 0.9rem; cursor: pointer;
+  font-size: 0.9rem; text-decoration: none; font-weight: 700; }
+#back-btn { left: 0.8rem; } #audio-btn { right: 0.8rem; font-size: 1.1rem; }
+</style>
+</head>
+<body>
+<a href="../" id="back-btn">← もどる</a>
+<button id="audio-btn" aria-label="おと">🔊</button>
+<div id="hud"><div class="pill">🍉 <span id="score">0</span></div><div id="lives">❤️❤️❤️</div></div>
+<canvas id="game"></canvas>
+
+<div id="overlay">
+  <div class="panel" id="panel">
+    <h2>🍉 フルーツカット</h2>
+    <p>とんでくる フルーツを ゆびで スーッと なぞって きろう！<br>💣 バクダンは きっちゃダメ。フルーツを おとすと ❤️ が へるよ。</p>
+    <button class="play-btn" id="start-btn">あそぶ！</button>
+  </div>
+</div>
+
+<script>
+const Sfx = (() => {
+  let ctx; let muted = localStorage.getItem('sfx-muted') === '1';
+  const init = () => { if (!ctx) ctx = new (window.AudioContext||window.webkitAudioContext)(); if (ctx.state==='suspended') ctx.resume(); };
+  const play = (freq,dur,type='sine',vol=0.2,delay=0) => { if (muted) return; init();
+    const t=ctx.currentTime+delay, osc=ctx.createOscillator(), g=ctx.createGain();
+    osc.type=type; osc.frequency.value=freq;
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+0.01); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    osc.connect(g); g.connect(ctx.destination); osc.start(t); osc.stop(t+dur+0.05); };
+  const seq = (notes,type='triangle',vol=0.22) => { let t=0; notes.forEach(([f,d])=>{ play(f,d,type,vol,t); t+=d*0.9; }); };
+  const noise = (dur=0.3,vol=0.3) => { if (muted) return; init();
+    const n=ctx.sampleRate*dur, buf=ctx.createBuffer(1,n,ctx.sampleRate), d=buf.getChannelData(0);
+    for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+    const src=ctx.createBufferSource(); src.buffer=buf; const g=ctx.createGain(); g.gain.value=vol;
+    src.connect(g); g.connect(ctx.destination); src.start(); };
+  return {
+    slice: () => play(880,0.08,'triangle',0.2),
+    boom: () => { noise(0.4,0.35); play(80,0.4,'sawtooth',0.25); },
+    miss: () => play(200,0.2,'sine',0.15),
+    end: () => seq([[784,0.14],[587,0.14],[440,0.28]],'sawtooth',0.2),
+    record: () => seq([[660,0.09],[880,0.09],[1175,0.09],[1568,0.26]],'triangle',0.26),
+    toggle(){ muted=!muted; localStorage.setItem('sfx-muted',muted?'1':'0'); return muted; },
+    muted: () => muted
+  };
+})();
+(() => { const b=document.getElementById('audio-btn'); b.textContent=Sfx.muted()?'🔇':'🔊';
+  b.addEventListener('click',(e)=>{ e.stopPropagation(); b.textContent=Sfx.toggle()?'🔇':'🔊'; }); })();
+
+const cv = document.getElementById('game');
+const ctx = cv.getContext('2d');
+const scoreEl = document.getElementById('score');
+const livesEl = document.getElementById('lives');
+const overlay = document.getElementById('overlay');
+const panel = document.getElementById('panel');
+let W,H; function resize(){ W=cv.width=innerWidth; H=cv.height=innerHeight; } resize(); addEventListener('resize',resize);
+
+const FRUITS = ['🍉','🍎','🍊','🍓','🍇','🍌','🍑','🥝','🍍','🍒'];
+let objs, particles, score, lives, running, spawnTimer, lastSpawn;
+let trail = []; // recent pointer points
+
+function startGame(){
+  score=0; lives=3; running=true; objs=[]; particles=[]; trail=[]; lastSpawn=0;
+  scoreEl.textContent='0'; livesEl.textContent='❤️❤️❤️';
+  overlay.classList.add('hidden');
+  if (!rafRunning){ rafRunning=true; requestAnimationFrame(loop); }
+}
+
+function spawn(){
+  const isBomb = Math.random() < 0.16;
+  const x = W*0.2 + Math.random()*W*0.6;
+  const vx = (W/2 - x) * 0.004 + (Math.random()-0.5)*2;
+  const vy = -(13 + Math.random()*5); // upward launch
+  objs.push({ x, y: H+50, vx, vy, r: 34, emoji: isBomb ? '💣' : FRUITS[Math.floor(Math.random()*FRUITS.length)], bomb: isBomb, sliced: false, scored: false });
+}
+
+function loop(ts){
+  ctx.clearRect(0,0,W,H);
+  if (running) {
+    if (ts - lastSpawn > Math.max(560 - score*6, 320)) { spawn(); if (Math.random()<0.25) spawn(); lastSpawn = ts; }
+  }
+  // physics
+  objs.forEach(o => { o.vy += 0.32; o.x += o.vx; o.y += o.vy; });
+  // off bottom = missed (if fruit & not sliced)
+  objs = objs.filter(o => {
+    if (o.y > H + 80) {
+      if (!o.bomb && !o.sliced && running) loseLife();
+      return false;
+    }
+    return true;
+  });
+  // draw objects
+  objs.forEach(o => {
+    ctx.save(); ctx.translate(o.x,o.y);
+    ctx.font = (o.r*2)+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(o.emoji, 0, 0);
+    ctx.restore();
+  });
+  // particles
+  particles.forEach(p=>{ p.vy+=0.35; p.x+=p.vx; p.y+=p.vy; p.life--; });
+  particles = particles.filter(p=>p.life>0);
+  particles.forEach(p=>{ ctx.globalAlpha=Math.max(p.life/p.max,0); ctx.fillStyle=p.color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,6.28); ctx.fill(); ctx.globalAlpha=1; });
+  // blade trail
+  if (trail.length>1){
+    ctx.lineCap='round'; ctx.lineJoin='round';
+    for (let i=1;i<trail.length;i++){
+      const a=trail[i-1], b=trail[i];
+      ctx.strokeStyle='rgba(255,255,255,'+(i/trail.length*0.9)+')';
+      ctx.lineWidth=i/trail.length*10+2;
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+    }
+  }
+  // age trail
+  if (trail.length) trail = trail.slice(-12);
+  requestAnimationFrame(loop);
+}
+let rafRunning=false;
+
+function loseLife(){
+  lives--; livesEl.textContent = '❤️'.repeat(Math.max(lives,0)) || '💔';
+  Sfx.miss();
+  if (lives<=0) gameOver();
+}
+
+function burst(x,y,color){
+  for(let i=0;i<14;i++) particles.push({ x,y, vx:(Math.random()-0.5)*9, vy:(Math.random()-0.5)*9-2,
+    r:3+Math.random()*5, color, life:24+Math.random()*16, max:40 });
+}
+
+function sliceAt(x,y){
+  if (!running) return;
+  objs.forEach(o => {
+    if (o.sliced || o.scored) return;
+    const dx=o.x-x, dy=o.y-y;
+    if (dx*dx+dy*dy < (o.r+8)*(o.r+8)) {
+      if (o.bomb) {
+        o.scored=true; burst(o.x,o.y,'#333'); burst(o.x,o.y,'#ff6b6b');
+        Sfx.boom(); loseLife(); o.emoji='💥'; o.sliced=true;
+      } else {
+        o.sliced=true; o.scored=true;
+        score++; scoreEl.textContent=score; Sfx.slice();
+        burst(o.x,o.y, ['#ff5e57','#ffd32a','#0be881','#ff9ff3','#48dbfb'][Math.floor(Math.random()*5)]);
+        // split halves fly apart
+        objs.push({ x:o.x-6, y:o.y, vx:o.vx-2.5, vy:o.vy*0.4, r:o.r*0.7, emoji:o.emoji, bomb:false, sliced:true, scored:true });
+        objs.push({ x:o.x+6, y:o.y, vx:o.vx+2.5, vy:o.vy*0.4, r:o.r*0.7, emoji:o.emoji, bomb:false, sliced:true, scored:true });
+        o.r=0; o.emoji='';
+      }
+    }
+  });
+}
+
+function gameOver(){
+  running=false;
+  const best=+(localStorage.getItem('fruitcut-best')||0);
+  const isRecord=score>best; if(isRecord) localStorage.setItem('fruitcut-best',score);
+  setTimeout(()=>{
+    panel.innerHTML = `
+      <h2>${isRecord?'🏆 しんきろく！':'🍉 おしまい！'}</h2>
+      <div class="big-score">${score} こ</div>
+      <div class="best">ベスト: ${Math.max(score,best)} こ</div>
+      <p>${score>=25?'カットめいじん！🏆':score>=12?'おみごと！🎉':'もういちど ちょうせん！'}</p>
+      <button class="play-btn" id="again-btn">もういちど！</button>`;
+    overlay.classList.remove('hidden');
+    document.getElementById('again-btn').addEventListener('click',(e)=>{e.stopPropagation();startGame();});
+    if(isRecord && score>0) Sfx.record(); else Sfx.end();
+  }, 500);
+}
+
+let down=false;
+function pt(e){ const t=e.touches?e.touches[0]:e; return { x:t.clientX, y:t.clientY }; }
+function move(e){
+  if (e.target.closest('#back-btn,#audio-btn,#overlay')) return;
+  if (e.cancelable) e.preventDefault();
+  const p = pt(e); trail.push(p); sliceAt(p.x,p.y);
+}
+cv.addEventListener('pointerdown', e=>{ down=true; trail=[pt(e)]; });
+cv.addEventListener('pointermove', e=>{ if(down) move(e); });
+addEventListener('pointerup', ()=>{ down=false; });
+cv.addEventListener('pointerleave', ()=>{ down=false; });
+
+document.getElementById('start-btn').addEventListener('click',(e)=>{e.stopPropagation();startGame();});
+</script>
+</body>
+</html>
