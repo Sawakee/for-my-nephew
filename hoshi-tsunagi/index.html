@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ほしつなぎ 🌟</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  user-select: none; -webkit-user-select: none;
+  overflow: hidden;
+  display: flex; flex-direction: column; align-items: center;
+  color: white;
+  background:
+    radial-gradient(900px 600px at 80% -10%, #2a2a72 0%, transparent 60%),
+    radial-gradient(800px 700px at 10% 110%, #3a1c5e 0%, transparent 55%),
+    linear-gradient(180deg, #141432, #0a0a1f);
+  touch-action: manipulation;
+}
+.twinkle {
+  position: fixed; pointer-events: none; z-index: 0;
+  color: white; animation: tw 3s ease-in-out infinite;
+}
+@keyframes tw { 0%,100% { opacity: 0.15; } 50% { opacity: 0.9; } }
+header { text-align: center; padding: 0.9rem 1rem 0.3rem; z-index: 2; }
+h1 {
+  font-size: clamp(1.4rem, 5vw, 2.2rem); font-weight: 900;
+  text-shadow: 0 0 18px rgba(255,230,120,0.7), 0 3px 6px rgba(0,0,0,0.4);
+}
+#hud { display: flex; gap: 0.5rem; justify-content: center; margin-top: 0.5rem; flex-wrap: wrap; }
+.pill {
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(255,255,255,0.35);
+  border-radius: 30px; padding: 0.32rem 1.1rem;
+  font-weight: 900; font-size: 1rem;
+}
+#stage-wrap {
+  position: relative; z-index: 1;
+  flex: 1; width: 100%;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0.5rem 0 1rem;
+}
+canvas#stage {
+  background: rgba(255,255,255,0.05);
+  border: 2px solid rgba(255,255,255,0.18);
+  border-radius: 24px;
+  touch-action: none;
+}
+#overlay {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; padding: 1.5rem;
+  background: rgba(8,8,30,0.6);
+  backdrop-filter: blur(6px);
+}
+#overlay.hidden { display: none; }
+.panel {
+  background: rgba(255,255,255,0.1);
+  border: 2px solid rgba(255,255,255,0.35);
+  backdrop-filter: blur(14px);
+  border-radius: 28px; padding: 2rem 2.2rem;
+  max-width: 380px; width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.panel h2 { font-size: clamp(1.6rem, 6vw, 2.3rem); margin-bottom: 0.6rem; }
+.panel p { font-size: 1.05rem; line-height: 1.7; margin-bottom: 1.2rem; }
+.play-btn {
+  background: linear-gradient(145deg, #ffd93d, #ff9f1c);
+  color: #4a3500; border: none;
+  font-size: 1.4rem; font-weight: 900;
+  padding: 0.8rem 2.4rem; border-radius: 50px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(255,159,28,0.5);
+  transition: transform 0.15s;
+}
+.play-btn:hover { transform: scale(1.06); }
+.play-btn:active { transform: scale(0.95); }
+#back-btn, #audio-btn {
+  position: fixed; top: 0.8rem; z-index: 30;
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(8px);
+  color: white; border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 10px; padding: 0.4rem 0.9rem;
+  cursor: pointer; font-size: 0.9rem; text-decoration: none; font-weight: 700;
+}
+#back-btn { left: 0.8rem; }
+#audio-btn { right: 0.8rem; font-size: 1.1rem; line-height: 1.4; }
+#confetti-layer { position: fixed; inset: 0; pointer-events: none; z-index: 25; display: none; }
+</style>
+</head>
+<body>
+<a href="../" id="back-btn">← もどる</a>
+<button id="audio-btn" aria-label="おと">🔊</button>
+
+<header>
+  <h1>🌟 ほしつなぎ</h1>
+  <div id="hud">
+    <div class="pill" id="pic-name">？？？</div>
+    <div class="pill">できた え <span id="done">0</span></div>
+  </div>
+</header>
+
+<div id="stage-wrap"><canvas id="stage"></canvas></div>
+
+<div id="overlay">
+  <div class="panel">
+    <h2>🌟 ほしつなぎ</h2>
+    <p>1 → 2 → 3 … の じゅんばんに<br>ほしを タップしてみよう！<br>なにかの えが でてくるよ ✨</p>
+    <button class="play-btn" id="start-btn">あそぶ！</button>
+  </div>
+</div>
+
+<canvas id="confetti-layer"></canvas>
+
+<script>
+// --- Web Audio SFX ---
+const Sfx = (() => {
+  let ctx;
+  let muted = localStorage.getItem('sfx-muted') === '1';
+  const init = () => {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+  };
+  const play = (freq, dur, type='sine', vol=0.2, delay=0) => {
+    if (muted) return;
+    init();
+    const t = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(t); osc.stop(t + dur + 0.05);
+  };
+  const seq = (notes, type='triangle', vol=0.22) => {
+    let t = 0;
+    notes.forEach(([f, d]) => { play(f, d, type, vol, t); t += d * 0.9; });
+  };
+  const SCALE = [523, 587, 659, 698, 784, 880, 988, 1047, 1175, 1319, 1397, 1568];
+  return {
+    dot:   (i) => play(SCALE[i % SCALE.length], 0.15, 'triangle', 0.22),
+    wrong: () => play(160, 0.18, 'sawtooth', 0.14),
+    done:  () => seq([[523,0.1],[659,0.1],[784,0.1],[1047,0.3]], 'triangle', 0.26),
+    start: () => seq([[523,0.1],[659,0.1],[784,0.18]], 'triangle', 0.22),
+    toggle() { muted = !muted; localStorage.setItem('sfx-muted', muted ? '1' : '0'); return muted; },
+    muted: () => muted
+  };
+})();
+(() => {
+  const btn = document.getElementById('audio-btn');
+  btn.textContent = Sfx.muted() ? '🔇' : '🔊';
+  btn.addEventListener('click', () => { btn.textContent = Sfx.toggle() ? '🔇' : '🔊'; });
+})();
+
+// background twinkles
+for (let i = 0; i < 24; i++) {
+  const s = document.createElement('span');
+  s.className = 'twinkle';
+  s.textContent = ['✦','✧','·','⭑'][Math.floor(Math.random()*4)];
+  s.style.left = Math.random()*100 + 'vw';
+  s.style.top = Math.random()*100 + 'vh';
+  s.style.fontSize = (0.5 + Math.random()*1.1) + 'rem';
+  s.style.animationDelay = -(Math.random()*3) + 's';
+  document.body.appendChild(s);
+}
+
+// --- Pictures: points in 0..1 coords, tapped in order, shape is closed at the end ---
+const PICTURES = [
+  { name: 'おうち', emoji: '🏠', color: '#ffa94d', pts: [
+    [0.15,0.90],[0.15,0.50],[0.50,0.18],[0.85,0.50],[0.85,0.90]
+  ]},
+  { name: 'ハート', emoji: '💖', color: '#ff6b9d', pts: [
+    [0.50,0.32],[0.35,0.15],[0.18,0.22],[0.12,0.45],[0.50,0.88],[0.88,0.45],[0.82,0.22],[0.65,0.15]
+  ]},
+  { name: 'さかな', emoji: '🐟', color: '#4dabf7', pts: [
+    [0.08,0.50],[0.30,0.28],[0.60,0.28],[0.76,0.42],[0.92,0.26],[0.92,0.74],[0.76,0.58],[0.60,0.72],[0.30,0.72]
+  ]},
+  { name: 'おほしさま', emoji: '⭐', color: '#ffd43b', pts: [
+    [0.50,0.05],[0.62,0.34],[0.93,0.36],[0.69,0.57],[0.76,0.88],[0.50,0.70],[0.24,0.88],[0.31,0.57],[0.07,0.36],[0.38,0.34]
+  ]},
+  { name: 'ロケット', emoji: '🚀', color: '#b197fc', pts: [
+    [0.50,0.04],[0.63,0.20],[0.63,0.55],[0.80,0.76],[0.60,0.72],[0.50,0.92],[0.40,0.72],[0.20,0.76],[0.37,0.55],[0.37,0.20]
+  ]},
+];
+
+const cv = document.getElementById('stage');
+const ctx = cv.getContext('2d');
+const picNameEl = document.getElementById('pic-name');
+const doneEl = document.getElementById('done');
+const overlay = document.getElementById('overlay');
+
+let picIdx = 0, next = 0, donePics = 0, finished = false;
+let shakeUntil = 0, revealAt = 0;
+let S = 300; // canvas css size
+
+function resize() {
+  S = Math.floor(Math.min(window.innerWidth * 0.92, window.innerHeight - 170, 540));
+  const dpr = window.devicePixelRatio || 1;
+  cv.style.width = S + 'px'; cv.style.height = S + 'px';
+  cv.width = S * dpr; cv.height = S * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+addEventListener('resize', () => { resize(); });
+
+function pic() { return PICTURES[picIdx % PICTURES.length]; }
+function px(p) { return [p[0] * S, p[1] * S]; }
+function dotR() { return Math.max(16, S * 0.045); }
+
+function loadPicture() {
+  next = 0; finished = false; revealAt = 0;
+  picNameEl.textContent = '？？？';
+  draw();
+}
+
+function draw(now) {
+  now = now || performance.now();
+  ctx.clearRect(0, 0, S, S);
+  const p = pic();
+  const r = dotR();
+
+  // connected lines
+  if (next > 0) {
+    ctx.beginPath();
+    const [x0, y0] = px(p.pts[0]);
+    ctx.moveTo(x0, y0);
+    for (let i = 1; i < next; i++) {
+      const [x, y] = px(p.pts[i]);
+      ctx.lineTo(x, y);
+    }
+    if (finished) ctx.closePath();
+    ctx.strokeStyle = p.color;
+    ctx.lineWidth = 5;
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.shadowColor = p.color; ctx.shadowBlur = 14;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  if (finished) {
+    // fill the completed shape + big emoji
+    ctx.beginPath();
+    const [x0, y0] = px(p.pts[0]);
+    ctx.moveTo(x0, y0);
+    for (let i = 1; i < p.pts.length; i++) {
+      const [x, y] = px(p.pts[i]);
+      ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = p.color + '33';
+    ctx.fill();
+    ctx.font = Math.floor(S * 0.28) + 'px serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const pop = Math.min(1, (now - revealAt) / 400);
+    ctx.save();
+    ctx.translate(S / 2, S / 2);
+    ctx.scale(0.3 + 0.7 * pop, 0.3 + 0.7 * pop);
+    ctx.fillText(p.emoji, 0, 0);
+    ctx.restore();
+    requestAnimationFrame(draw);
+    return;
+  }
+
+  // dots
+  const pulse = 1 + 0.12 * Math.sin(now / 220);
+  for (let i = 0; i < p.pts.length; i++) {
+    let [x, y] = px(p.pts[i]);
+    const isNext = i === next;
+    if (isNext && now < shakeUntil) x += Math.sin(now / 25) * 4;
+    const rr = i < next ? r * 0.7 : isNext ? r * pulse : r * 0.85;
+    ctx.beginPath();
+    ctx.arc(x, y, rr, 0, Math.PI * 2);
+    if (i < next) { ctx.fillStyle = p.color; }
+    else if (isNext) { ctx.fillStyle = '#ffd43b'; ctx.shadowColor = '#ffd43b'; ctx.shadowBlur = 18; }
+    else { ctx.fillStyle = 'rgba(255,255,255,0.25)'; }
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    if (i >= next) {
+      ctx.fillStyle = isNext ? '#4a3500' : 'white';
+      ctx.font = '900 ' + Math.floor(r * 0.95) + 'px sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(i + 1, x, y + 1);
+    }
+  }
+  requestAnimationFrame(draw);
+}
+
+cv.addEventListener('pointerdown', (e) => {
+  if (finished || overlay.classList.contains('hidden') === false) return;
+  const rect = cv.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  const p = pic();
+  const r = dotR() * 1.5;
+  let hit = -1;
+  for (let i = 0; i < p.pts.length; i++) {
+    const [dx, dy] = px(p.pts[i]);
+    if (Math.hypot(x - dx, y - dy) < r) { hit = i; break; }
+  }
+  if (hit === -1) return;
+  if (hit === next) {
+    Sfx.dot(next);
+    next++;
+    if (next === p.pts.length) completePicture();
+  } else if (hit > next) {
+    Sfx.wrong();
+    shakeUntil = performance.now() + 300;
+  }
+});
+
+function completePicture() {
+  finished = true;
+  revealAt = performance.now();
+  const p = pic();
+  picNameEl.textContent = p.emoji + ' ' + p.name + '！';
+  donePics++;
+  doneEl.textContent = donePics;
+  const best = +(localStorage.getItem('hoshi-tsunagi-best') || 0);
+  if (donePics > best) localStorage.setItem('hoshi-tsunagi-best', donePics);
+  Sfx.done();
+  launchConfetti();
+  setTimeout(() => { picIdx++; loadPicture(); }, 2600);
+}
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  overlay.classList.add('hidden');
+  Sfx.start();
+  resize();
+  loadPicture();
+});
+resize();
+draw();
+
+function launchConfetti() {
+  const cl = document.getElementById('confetti-layer');
+  cl.style.display = 'block';
+  cl.width = window.innerWidth; cl.height = window.innerHeight;
+  const c = cl.getContext('2d');
+  const ps = Array.from({length: 80}, () => ({
+    x: Math.random()*cl.width, y: -20,
+    vx: (Math.random()-0.5)*7, vy: 1+Math.random()*5,
+    r: 6+Math.random()*10, rot: Math.random()*Math.PI*2,
+    vrot: (Math.random()-0.5)*0.2,
+    color: `hsl(${Math.random()*360},90%,60%)`,
+    type: Math.floor(Math.random()*3)
+  }));
+  function drawC() {
+    c.clearRect(0,0,cl.width,cl.height);
+    let alive = false;
+    ps.forEach(p => {
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.07; p.rot+=p.vrot;
+      if (p.y < cl.height+30) alive = true;
+      c.save(); c.translate(p.x,p.y); c.rotate(p.rot); c.fillStyle=p.color;
+      if (p.type===0) c.fillRect(-p.r/2,-p.r/3,p.r,p.r*0.6);
+      else if (p.type===1) { c.beginPath(); c.arc(0,0,p.r/2,0,Math.PI*2); c.fill(); }
+      else {
+        c.beginPath();
+        for (let j=0;j<5;j++) {
+          const a=(j*4*Math.PI/5)-Math.PI/2, b=(j*4*Math.PI/5+2*Math.PI/5)-Math.PI/2;
+          j===0 ? c.moveTo(Math.cos(a)*p.r,Math.sin(a)*p.r) : c.lineTo(Math.cos(a)*p.r,Math.sin(a)*p.r);
+          c.lineTo(Math.cos(b)*p.r*0.4,Math.sin(b)*p.r*0.4);
+        }
+        c.closePath(); c.fill();
+      }
+      c.restore();
+    });
+    if (alive) requestAnimationFrame(drawC);
+    else cl.style.display = 'none';
+  }
+  drawC();
+}
+</script>
+</body>
+</html>

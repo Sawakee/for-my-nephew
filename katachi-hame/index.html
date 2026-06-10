@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>かたちはめ 🔷</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  user-select: none; -webkit-user-select: none;
+  overflow: hidden;
+  display: flex; flex-direction: column; align-items: center;
+  color: white;
+  background: linear-gradient(-45deg, #f6d365, #fda085, #f78ca0, #a18cd1);
+  background-size: 400% 400%;
+  animation: bgAnim 14s ease infinite;
+  touch-action: none;
+}
+@keyframes bgAnim {
+  0%,100% { background-position: 0% 50%; }
+  50%     { background-position: 100% 50%; }
+}
+header { text-align: center; padding: 0.9rem 1rem 0.3rem; z-index: 2; }
+h1 {
+  font-size: clamp(1.4rem, 5vw, 2.2rem); font-weight: 900;
+  text-shadow: 0 0 18px rgba(255,255,255,0.5), 0 3px 6px rgba(0,0,0,0.25);
+}
+#hud { display: flex; gap: 0.5rem; justify-content: center; margin-top: 0.5rem; }
+.pill {
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(255,255,255,0.45);
+  border-radius: 30px; padding: 0.32rem 1.1rem;
+  font-weight: 900; font-size: 1rem;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.25);
+}
+#board {
+  position: relative; z-index: 1;
+  width: min(94vw, 560px);
+  flex: 1; display: flex; flex-direction: column;
+  justify-content: space-around; align-items: center;
+  padding: 1rem 0 1.5rem;
+}
+#holes, #tray {
+  display: flex; gap: clamp(0.6rem, 3vw, 1.4rem);
+  justify-content: center; align-items: center; flex-wrap: wrap;
+  width: 100%;
+}
+#holes {
+  background: rgba(255,255,255,0.18);
+  border: 2px dashed rgba(255,255,255,0.55);
+  border-radius: 26px;
+  padding: clamp(0.8rem, 3vw, 1.4rem);
+  min-height: 120px;
+}
+.hole {
+  position: relative;
+  width: var(--sz); height: var(--sz);
+  display: grid; place-items: center;
+}
+.hole .silhouette {
+  width: 100%; height: 100%;
+  background: rgba(40,30,60,0.45);
+  box-shadow: inset 0 3px 8px rgba(0,0,0,0.3);
+}
+.hole.filled .silhouette { background: var(--col); box-shadow: 0 0 18px var(--col); animation: popIn 0.35s; }
+@keyframes popIn {
+  0%  { transform: scale(0.5); }
+  60% { transform: scale(1.15); }
+  100%{ transform: scale(1); }
+}
+.shape {
+  position: relative;
+  width: var(--sz); height: var(--sz);
+  background: var(--col);
+  cursor: grab;
+  filter: drop-shadow(0 5px 8px rgba(0,0,0,0.3));
+  transition: transform 0.15s;
+  touch-action: none;
+}
+.shape.dragging {
+  position: fixed; z-index: 50;
+  cursor: grabbing;
+  transform: scale(1.15);
+  transition: none;
+  pointer-events: none;
+}
+.shape.back { animation: shakeBack 0.35s; }
+@keyframes shakeBack {
+  0%,100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
+}
+.shp-circle   { border-radius: 50%; }
+.shp-square   { border-radius: 12%; }
+.shp-triangle { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }
+.shp-star     { clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+.shp-diamond  { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
+.shp-pentagon { clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%); }
+.shp-cross    { clip-path: polygon(35% 0%,65% 0%,65% 35%,100% 35%,100% 65%,65% 65%,65% 100%,35% 100%,35% 65%,0% 65%,0% 35%,35% 35%); }
+
+#msg {
+  min-height: 2.2rem; font-size: 1.3rem; font-weight: 900;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  animation: msgPop 0.4s;
+}
+@keyframes msgPop { 0% { transform: scale(0.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+#overlay {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; padding: 1.5rem;
+  background: rgba(60,30,70,0.5);
+  backdrop-filter: blur(6px);
+}
+#overlay.hidden { display: none; }
+.panel {
+  background: rgba(255,255,255,0.16);
+  border: 2px solid rgba(255,255,255,0.45);
+  backdrop-filter: blur(14px);
+  border-radius: 28px; padding: 2rem 2.2rem;
+  max-width: 380px; width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+}
+.panel h2 { font-size: clamp(1.6rem, 6vw, 2.3rem); margin-bottom: 0.6rem; text-shadow: 0 3px 6px rgba(0,0,0,0.3); }
+.panel p { font-size: 1.05rem; line-height: 1.7; margin-bottom: 1.2rem; }
+.play-btn {
+  background: linear-gradient(145deg, #ffd93d, #ff9f1c);
+  color: #4a3500; border: none;
+  font-size: 1.4rem; font-weight: 900;
+  padding: 0.8rem 2.4rem; border-radius: 50px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(255,159,28,0.5);
+  transition: transform 0.15s;
+}
+.play-btn:hover { transform: scale(1.06); }
+.play-btn:active { transform: scale(0.95); }
+
+#back-btn, #audio-btn {
+  position: fixed; top: 0.8rem; z-index: 30;
+  background: rgba(255,255,255,0.25);
+  backdrop-filter: blur(8px);
+  color: white; border: 1px solid rgba(255,255,255,0.5);
+  border-radius: 10px; padding: 0.4rem 0.9rem;
+  cursor: pointer; font-size: 0.9rem; text-decoration: none; font-weight: 700;
+}
+#back-btn { left: 0.8rem; }
+#audio-btn { right: 0.8rem; font-size: 1.1rem; line-height: 1.4; }
+#confetti-layer { position: fixed; inset: 0; pointer-events: none; z-index: 25; display: none; }
+</style>
+</head>
+<body>
+<a href="../" id="back-btn">← もどる</a>
+<button id="audio-btn" aria-label="おと">🔊</button>
+
+<header>
+  <h1>🔷 かたちはめ</h1>
+  <div id="hud">
+    <div class="pill">ラウンド <span id="round">1</span></div>
+    <div class="pill">はめた <span id="count">0</span></div>
+  </div>
+</header>
+
+<div id="board">
+  <div id="holes"></div>
+  <div id="msg"></div>
+  <div id="tray"></div>
+</div>
+
+<div id="overlay">
+  <div class="panel">
+    <h2>🔷 かたちはめ</h2>
+    <p>したの かたちを ドラッグして<br>おなじ かたちの あなに はめよう！</p>
+    <button class="play-btn" id="start-btn">あそぶ！</button>
+  </div>
+</div>
+
+<canvas id="confetti-layer"></canvas>
+
+<script>
+// --- Web Audio SFX ---
+const Sfx = (() => {
+  let ctx;
+  let muted = localStorage.getItem('sfx-muted') === '1';
+  const init = () => {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+  };
+  const play = (freq, dur, type='sine', vol=0.2, delay=0) => {
+    if (muted) return;
+    init();
+    const t = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(t); osc.stop(t + dur + 0.05);
+  };
+  const seq = (notes, type='triangle', vol=0.22) => {
+    let t = 0;
+    notes.forEach(([f, d]) => { play(f, d, type, vol, t); t += d * 0.9; });
+  };
+  return {
+    snap:  () => seq([[523,0.07],[784,0.12]], 'triangle', 0.22),
+    wrong: () => play(180, 0.2, 'sawtooth', 0.15),
+    pick:  () => play(660, 0.05, 'sine', 0.12),
+    clear: () => seq([[523,0.1],[659,0.1],[784,0.1],[1047,0.25]], 'triangle', 0.26),
+    start: () => seq([[523,0.1],[659,0.1],[784,0.18]], 'triangle', 0.22),
+    toggle() { muted = !muted; localStorage.setItem('sfx-muted', muted ? '1' : '0'); return muted; },
+    muted: () => muted
+  };
+})();
+(() => {
+  const btn = document.getElementById('audio-btn');
+  btn.textContent = Sfx.muted() ? '🔇' : '🔊';
+  btn.addEventListener('click', () => { btn.textContent = Sfx.toggle() ? '🔇' : '🔊'; });
+})();
+
+// --- Game ---
+const SHAPES = [
+  { key: 'circle',   col: '#ff6b6b' },
+  { key: 'square',   col: '#4dabf7' },
+  { key: 'triangle', col: '#69db7c' },
+  { key: 'star',     col: '#ffd43b' },
+  { key: 'diamond',  col: '#b197fc' },
+  { key: 'pentagon', col: '#ffa94d' },
+  { key: 'cross',    col: '#f783ac' },
+];
+const PRAISE = ['すごい！✨', 'やったね！🎉', 'じょうず！💮', 'できた！🌟', 'てんさい！🏆'];
+
+const holesEl = document.getElementById('holes');
+const trayEl = document.getElementById('tray');
+const msgEl = document.getElementById('msg');
+const roundEl = document.getElementById('round');
+const countEl = document.getElementById('count');
+const overlay = document.getElementById('overlay');
+
+let round = 0, placedTotal = 0, remaining = 0;
+
+function shapeSize() {
+  return Math.min(96, Math.max(64, Math.floor(window.innerWidth / 6)));
+}
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function startRound() {
+  round++;
+  roundEl.textContent = round;
+  holesEl.innerHTML = '';
+  trayEl.innerHTML = '';
+  msgEl.textContent = '';
+  const n = Math.min(3 + Math.floor((round - 1) / 2), 5);
+  const picked = shuffle(SHAPES.slice()).slice(0, n);
+  remaining = n;
+  const sz = shapeSize() + 'px';
+
+  picked.forEach(s => {
+    const hole = document.createElement('div');
+    hole.className = 'hole';
+    hole.dataset.key = s.key;
+    hole.style.setProperty('--sz', sz);
+    hole.style.setProperty('--col', s.col);
+    const sil = document.createElement('div');
+    sil.className = 'silhouette shp-' + s.key;
+    hole.appendChild(sil);
+    holesEl.appendChild(hole);
+  });
+
+  shuffle(picked.slice()).forEach(s => {
+    const el = document.createElement('div');
+    el.className = 'shape shp-' + s.key;
+    el.dataset.key = s.key;
+    el.style.setProperty('--sz', sz);
+    el.style.setProperty('--col', s.col);
+    enableDrag(el);
+    trayEl.appendChild(el);
+  });
+}
+
+function enableDrag(el) {
+  el.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    Sfx.pick();
+    const rect = el.getBoundingClientRect();
+    const offX = e.clientX - rect.left;
+    const offY = e.clientY - rect.top;
+    // placeholder keeps the tray layout stable
+    const ghost = document.createElement('div');
+    ghost.style.width = rect.width + 'px';
+    ghost.style.height = rect.height + 'px';
+    el.parentNode.insertBefore(ghost, el);
+    el.classList.add('dragging');
+    el.style.width = rect.width + 'px';
+    el.style.height = rect.height + 'px';
+    moveTo(e.clientX, e.clientY);
+
+    function moveTo(x, y) {
+      el.style.left = (x - offX) + 'px';
+      el.style.top = (y - offY) + 'px';
+    }
+    function onMove(ev) { moveTo(ev.clientX, ev.clientY); }
+    function onUp(ev) {
+      removeEventListener('pointermove', onMove);
+      removeEventListener('pointerup', onUp);
+      removeEventListener('pointercancel', onUp);
+      const dropped = tryDrop(el, ev.clientX - offX + rect.width / 2, ev.clientY - offY + rect.height / 2);
+      el.classList.remove('dragging');
+      el.style.left = el.style.top = '';
+      if (dropped) {
+        ghost.remove();
+        el.remove();
+      } else {
+        ghost.replaceWith(el);
+        el.classList.add('back');
+        setTimeout(() => el.classList.remove('back'), 400);
+        Sfx.wrong();
+      }
+    }
+    addEventListener('pointermove', onMove);
+    addEventListener('pointerup', onUp);
+    addEventListener('pointercancel', onUp);
+  });
+}
+
+function tryDrop(el, cx, cy) {
+  const hole = [...holesEl.children].find(h => {
+    if (h.classList.contains('filled') || h.dataset.key !== el.dataset.key) return false;
+    const r = h.getBoundingClientRect();
+    const hx = r.left + r.width / 2, hy = r.top + r.height / 2;
+    return Math.hypot(cx - hx, cy - hy) < r.width * 0.8;
+  });
+  if (!hole) return false;
+  hole.classList.add('filled');
+  Sfx.snap();
+  placedTotal++;
+  countEl.textContent = placedTotal;
+  remaining--;
+  if (remaining === 0) roundClear();
+  return true;
+}
+
+function roundClear() {
+  msgEl.textContent = PRAISE[Math.floor(Math.random() * PRAISE.length)];
+  Sfx.clear();
+  launchConfetti();
+  const best = +(localStorage.getItem('katachi-hame-best') || 0);
+  if (round > best) localStorage.setItem('katachi-hame-best', round);
+  setTimeout(startRound, 1800);
+}
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  overlay.classList.add('hidden');
+  Sfx.start();
+  startRound();
+});
+
+function launchConfetti() {
+  const cv = document.getElementById('confetti-layer');
+  cv.style.display = 'block';
+  cv.width = window.innerWidth; cv.height = window.innerHeight;
+  const ctx = cv.getContext('2d');
+  const ps = Array.from({length: 70}, () => ({
+    x: Math.random()*cv.width, y: -20,
+    vx: (Math.random()-0.5)*7, vy: 1+Math.random()*5,
+    r: 6+Math.random()*10, rot: Math.random()*Math.PI*2,
+    vrot: (Math.random()-0.5)*0.2,
+    color: `hsl(${Math.random()*360},90%,60%)`,
+    type: Math.floor(Math.random()*3)
+  }));
+  function draw() {
+    ctx.clearRect(0,0,cv.width,cv.height);
+    let alive = false;
+    ps.forEach(p => {
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.07; p.rot+=p.vrot;
+      if (p.y < cv.height+30) alive = true;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.fillStyle=p.color;
+      if (p.type===0) ctx.fillRect(-p.r/2,-p.r/3,p.r,p.r*0.6);
+      else if (p.type===1) { ctx.beginPath(); ctx.arc(0,0,p.r/2,0,Math.PI*2); ctx.fill(); }
+      else {
+        ctx.beginPath();
+        for (let j=0;j<5;j++) {
+          const a=(j*4*Math.PI/5)-Math.PI/2, b=(j*4*Math.PI/5+2*Math.PI/5)-Math.PI/2;
+          j===0 ? ctx.moveTo(Math.cos(a)*p.r,Math.sin(a)*p.r) : ctx.lineTo(Math.cos(a)*p.r,Math.sin(a)*p.r);
+          ctx.lineTo(Math.cos(b)*p.r*0.4,Math.sin(b)*p.r*0.4);
+        }
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    });
+    if (alive) requestAnimationFrame(draw);
+    else cv.style.display = 'none';
+  }
+  draw();
+}
+</script>
+</body>
+</html>

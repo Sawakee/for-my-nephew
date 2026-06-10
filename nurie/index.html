@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ぬりえ 🖍️</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  user-select: none; -webkit-user-select: none;
+  overflow: hidden;
+  display: flex; flex-direction: column; align-items: center;
+  color: white;
+  background: linear-gradient(-45deg, #84fab0, #8fd3f4, #a6c1ee, #fbc2eb);
+  background-size: 400% 400%;
+  animation: bgAnim 16s ease infinite;
+}
+@keyframes bgAnim {
+  0%,100% { background-position: 0% 50%; }
+  50%     { background-position: 100% 50%; }
+}
+header { text-align: center; padding: 0.8rem 1rem 0.2rem; }
+h1 {
+  font-size: clamp(1.4rem, 5vw, 2.1rem); font-weight: 900;
+  text-shadow: 0 0 16px rgba(255,255,255,0.6), 0 3px 6px rgba(0,0,0,0.25);
+}
+#pics {
+  display: flex; gap: 0.45rem; justify-content: center;
+  margin-top: 0.5rem; flex-wrap: wrap;
+}
+.pic-btn {
+  background: rgba(255,255,255,0.25);
+  border: 2px solid rgba(255,255,255,0.5);
+  border-radius: 14px; padding: 0.3rem 0.8rem;
+  font-size: 1.3rem; cursor: pointer;
+  transition: transform 0.15s, background 0.2s;
+}
+.pic-btn.active { background: rgba(255,255,255,0.65); transform: scale(1.12); box-shadow: 0 4px 14px rgba(0,0,0,0.2); }
+.pic-btn:active { transform: scale(0.93); }
+#canvas-wrap {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  width: 100%; padding: 0.6rem; min-height: 0;
+}
+#svg-holder {
+  background: white;
+  border-radius: 22px;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.25);
+  padding: 8px;
+  height: 100%;
+  max-height: min(62vh, 92vw);
+  aspect-ratio: 1;
+}
+#svg-holder svg { width: 100%; height: 100%; display: block; }
+.region { cursor: pointer; transition: fill 0.15s; }
+.region:hover { filter: brightness(0.96); }
+#msg {
+  min-height: 1.8rem; font-size: 1.15rem; font-weight: 900;
+  text-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+#palette {
+  display: flex; gap: 0.45rem; justify-content: center; align-items: center;
+  flex-wrap: wrap; padding: 0.6rem 0.8rem 1.1rem;
+  max-width: 560px;
+}
+.swatch {
+  width: clamp(34px, 9vw, 46px); height: clamp(34px, 9vw, 46px);
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.8);
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+  transition: transform 0.15s;
+  display: grid; place-items: center; font-size: 1.1rem;
+}
+.swatch.active { transform: scale(1.25); border-color: #333; box-shadow: 0 0 0 3px white, 0 4px 14px rgba(0,0,0,0.35); }
+.swatch:active { transform: scale(0.9); }
+#back-btn, #audio-btn {
+  position: fixed; top: 0.8rem; z-index: 30;
+  background: rgba(255,255,255,0.3);
+  backdrop-filter: blur(8px);
+  color: white; border: 1px solid rgba(255,255,255,0.55);
+  border-radius: 10px; padding: 0.4rem 0.9rem;
+  cursor: pointer; font-size: 0.9rem; text-decoration: none; font-weight: 700;
+}
+#back-btn { left: 0.8rem; }
+#audio-btn { right: 0.8rem; font-size: 1.1rem; line-height: 1.4; }
+#confetti-layer { position: fixed; inset: 0; pointer-events: none; z-index: 25; display: none; }
+</style>
+</head>
+<body>
+<a href="../" id="back-btn">← もどる</a>
+<button id="audio-btn" aria-label="おと">🔊</button>
+
+<header>
+  <h1>🖍️ ぬりえ</h1>
+  <div id="pics"></div>
+</header>
+
+<div id="canvas-wrap"><div id="svg-holder"></div></div>
+<div id="msg">すきな いろで ぬってみよう！</div>
+<div id="palette"></div>
+
+<canvas id="confetti-layer"></canvas>
+
+<script>
+// --- Web Audio SFX ---
+const Sfx = (() => {
+  let ctx;
+  let muted = localStorage.getItem('sfx-muted') === '1';
+  const init = () => {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+  };
+  const play = (freq, dur, type='sine', vol=0.2, delay=0) => {
+    if (muted) return;
+    init();
+    const t = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(t); osc.stop(t + dur + 0.05);
+  };
+  const seq = (notes, type='triangle', vol=0.22) => {
+    let t = 0;
+    notes.forEach(([f, d]) => { play(f, d, type, vol, t); t += d * 0.9; });
+  };
+  return {
+    paint: () => play(500 + Math.random()*400, 0.08, 'triangle', 0.16),
+    pick:  () => play(880, 0.06, 'sine', 0.14),
+    done:  () => seq([[523,0.1],[659,0.1],[784,0.1],[1047,0.3]], 'triangle', 0.26),
+    toggle() { muted = !muted; localStorage.setItem('sfx-muted', muted ? '1' : '0'); return muted; },
+    muted: () => muted
+  };
+})();
+(() => {
+  const btn = document.getElementById('audio-btn');
+  btn.textContent = Sfx.muted() ? '🔇' : '🔊';
+  btn.addEventListener('click', () => { btn.textContent = Sfx.toggle() ? '🔇' : '🔊'; });
+})();
+
+// --- Pictures (SVG, viewBox 0 0 300 300, paintable parts have class="region") ---
+const LINE = 'stroke="#374151" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"';
+const PICTURES = [
+  { name: 'ちょうちょ', emoji: '🦋', svg: `
+    <line x1="135" y1="80" x2="110" y2="40" ${LINE} fill="none"/>
+    <line x1="165" y1="80" x2="190" y2="40" ${LINE} fill="none"/>
+    <circle cx="106" cy="36" r="7" fill="#374151"/>
+    <circle cx="194" cy="36" r="7" fill="#374151"/>
+    <path class="region" d="M138 120 C60 50 10 95 35 150 C50 182 105 175 138 150 Z" fill="white" ${LINE}/>
+    <path class="region" d="M162 120 C240 50 290 95 265 150 C250 182 195 175 162 150 Z" fill="white" ${LINE}/>
+    <path class="region" d="M138 165 C85 165 55 210 80 245 C100 272 130 245 142 205 Z" fill="white" ${LINE}/>
+    <path class="region" d="M162 165 C215 165 245 210 220 245 C200 272 170 245 158 205 Z" fill="white" ${LINE}/>
+    <ellipse class="region" cx="150" cy="170" rx="20" ry="72" fill="white" ${LINE}/>
+    <circle class="region" cx="150" cy="88" r="22" fill="white" ${LINE}/>
+  `},
+  { name: 'おうち', emoji: '🏠', svg: `
+    <circle class="region" cx="252" cy="50" r="26" fill="white" ${LINE}/>
+    <path class="region" d="M30 70 q12 -24 36 -14 q8 -20 32 -12 q22 -8 26 14 q-4 22 -30 18 q-20 12 -36 0 q-26 6 -28 -6 Z" fill="white" ${LINE}/>
+    <polygon class="region" points="150,95 55,160 245,160" fill="white" ${LINE}/>
+    <rect class="region" x="75" y="160" width="150" height="110" fill="white" ${LINE}/>
+    <rect class="region" x="130" y="200" width="40" height="70" rx="6" fill="white" ${LINE}/>
+    <rect class="region" x="90" y="178" width="30" height="30" rx="4" fill="white" ${LINE}/>
+    <rect class="region" x="180" y="178" width="30" height="30" rx="4" fill="white" ${LINE}/>
+  `},
+  { name: 'おはな', emoji: '🌸', svg: `
+    <line x1="150" y1="185" x2="150" y2="272" stroke="#374151" stroke-width="6" stroke-linecap="round"/>
+    <path class="region" d="M150 230 C110 215 90 225 88 252 C112 262 140 252 150 238 Z" fill="white" ${LINE}/>
+    <path class="region" d="M150 230 C190 215 210 225 212 252 C188 262 160 252 150 238 Z" fill="white" ${LINE}/>
+    <ellipse class="region" cx="150" cy="62" rx="28" ry="34" fill="white" ${LINE}/>
+    <ellipse class="region" cx="92" cy="105" rx="28" ry="34" transform="rotate(-72 92 105)" fill="white" ${LINE}/>
+    <ellipse class="region" cx="114" cy="172" rx="28" ry="34" transform="rotate(-144 114 172)" fill="white" ${LINE}/>
+    <ellipse class="region" cx="186" cy="172" rx="28" ry="34" transform="rotate(144 186 172)" fill="white" ${LINE}/>
+    <ellipse class="region" cx="208" cy="105" rx="28" ry="34" transform="rotate(72 208 105)" fill="white" ${LINE}/>
+    <circle class="region" cx="150" cy="120" r="30" fill="white" ${LINE}/>
+  `},
+  { name: 'さかな', emoji: '🐠', svg: `
+    <circle class="region" cx="262" cy="60" r="13" fill="white" ${LINE}/>
+    <circle class="region" cx="240" cy="100" r="9" fill="white" ${LINE}/>
+    <path class="region" d="M40 150 L85 105 L85 195 Z" fill="white" ${LINE}/>
+    <ellipse class="region" cx="160" cy="150" rx="80" ry="55" fill="white" ${LINE}/>
+    <path class="region" d="M140 105 q25 -35 60 -20 q-15 25 -32 30 Z" fill="white" ${LINE}/>
+    <path class="region" d="M140 195 q25 35 60 20 q-15 -25 -32 -30 Z" fill="white" ${LINE}/>
+    <circle cx="205" cy="138" r="8" fill="#374151"/>
+    <path d="M225 165 q-10 8 -20 0" stroke="#374151" stroke-width="4" fill="none" stroke-linecap="round"/>
+  `},
+];
+const COLORS = ['#ff6b6b','#ffa94d','#ffd43b','#69db7c','#38d9a9','#4dabf7','#748ffc','#b197fc','#f783ac','#a9745b','#495057','#ffffff'];
+
+const holder = document.getElementById('svg-holder');
+const picsEl = document.getElementById('pics');
+const paletteEl = document.getElementById('palette');
+const msgEl = document.getElementById('msg');
+let current = COLORS[0];
+let celebrated = false;
+
+PICTURES.forEach((p, i) => {
+  const b = document.createElement('button');
+  b.className = 'pic-btn' + (i === 0 ? ' active' : '');
+  b.textContent = p.emoji;
+  b.title = p.name;
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.pic-btn').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    Sfx.pick();
+    loadPicture(i);
+  });
+  picsEl.appendChild(b);
+});
+
+COLORS.forEach((c, i) => {
+  const s = document.createElement('div');
+  s.className = 'swatch' + (i === 0 ? ' active' : '');
+  s.style.background = c;
+  if (c === '#ffffff') s.textContent = '🧽';
+  s.addEventListener('pointerdown', () => {
+    document.querySelectorAll('.swatch').forEach(x => x.classList.remove('active'));
+    s.classList.add('active');
+    current = c;
+    Sfx.pick();
+  });
+  paletteEl.appendChild(s);
+});
+
+function loadPicture(i) {
+  const p = PICTURES[i];
+  celebrated = false;
+  msgEl.textContent = p.name + ' を ぬってみよう！';
+  holder.innerHTML = `<svg viewBox="0 0 300 300">${p.svg}</svg>`;
+  holder.querySelectorAll('.region').forEach(r => {
+    r.addEventListener('pointerdown', () => {
+      r.setAttribute('fill', current);
+      Sfx.paint();
+      checkComplete();
+    });
+  });
+}
+
+function checkComplete() {
+  if (celebrated) return;
+  const regions = [...holder.querySelectorAll('.region')];
+  if (regions.every(r => r.getAttribute('fill') !== 'white')) {
+    celebrated = true;
+    msgEl.textContent = 'ぜんぶ ぬれたね！ すてき！✨';
+    Sfx.done();
+    launchConfetti();
+  }
+}
+
+loadPicture(0);
+
+function launchConfetti() {
+  const cv = document.getElementById('confetti-layer');
+  cv.style.display = 'block';
+  cv.width = window.innerWidth; cv.height = window.innerHeight;
+  const c = cv.getContext('2d');
+  const ps = Array.from({length: 80}, () => ({
+    x: Math.random()*cv.width, y: -20,
+    vx: (Math.random()-0.5)*7, vy: 1+Math.random()*5,
+    r: 6+Math.random()*10, rot: Math.random()*Math.PI*2,
+    vrot: (Math.random()-0.5)*0.2,
+    color: `hsl(${Math.random()*360},90%,60%)`,
+    type: Math.floor(Math.random()*3)
+  }));
+  function drawC() {
+    c.clearRect(0,0,cv.width,cv.height);
+    let alive = false;
+    ps.forEach(p => {
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.07; p.rot+=p.vrot;
+      if (p.y < cv.height+30) alive = true;
+      c.save(); c.translate(p.x,p.y); c.rotate(p.rot); c.fillStyle=p.color;
+      if (p.type===0) c.fillRect(-p.r/2,-p.r/3,p.r,p.r*0.6);
+      else if (p.type===1) { c.beginPath(); c.arc(0,0,p.r/2,0,Math.PI*2); c.fill(); }
+      else {
+        c.beginPath();
+        for (let j=0;j<5;j++) {
+          const a=(j*4*Math.PI/5)-Math.PI/2, b=(j*4*Math.PI/5+2*Math.PI/5)-Math.PI/2;
+          j===0 ? c.moveTo(Math.cos(a)*p.r,Math.sin(a)*p.r) : c.lineTo(Math.cos(a)*p.r,Math.sin(a)*p.r);
+          c.lineTo(Math.cos(b)*p.r*0.4,Math.sin(b)*p.r*0.4);
+        }
+        c.closePath(); c.fill();
+      }
+      c.restore();
+    });
+    if (alive) requestAnimationFrame(drawC);
+    else cv.style.display = 'none';
+  }
+  drawC();
+}
+</script>
+</body>
+</html>

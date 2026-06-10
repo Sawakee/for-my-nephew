@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>しんごうダッシュ 🚦</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+  user-select: none; -webkit-user-select: none;
+  overflow: hidden;
+  display: flex; flex-direction: column; align-items: center;
+  color: white;
+  background: linear-gradient(180deg, #74c0fc 0%, #4dabf7 55%, #69db7c 55.2%, #40c057 100%);
+  touch-action: manipulation;
+}
+.cloud {
+  position: fixed; pointer-events: none; z-index: 0;
+  font-size: 2.6rem; opacity: 0.85;
+  animation: drift linear infinite;
+}
+@keyframes drift {
+  0%   { transform: translateX(-15vw); }
+  100% { transform: translateX(115vw); }
+}
+header { text-align: center; padding: 0.8rem 1rem 0.2rem; z-index: 2; }
+h1 {
+  font-size: clamp(1.4rem, 5vw, 2.1rem); font-weight: 900;
+  text-shadow: 0 0 16px rgba(255,255,255,0.6), 0 3px 6px rgba(0,0,0,0.3);
+}
+#hud { display: flex; gap: 0.5rem; justify-content: center; margin-top: 0.5rem; }
+.pill {
+  background: rgba(255,255,255,0.25);
+  backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(255,255,255,0.55);
+  border-radius: 30px; padding: 0.32rem 1.1rem;
+  font-weight: 900; font-size: 1rem; min-width: 96px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.25);
+}
+#signal {
+  z-index: 1;
+  margin-top: 1rem;
+  background: #343a40;
+  border-radius: 22px;
+  padding: 0.8rem 1.6rem;
+  display: flex; gap: 1rem;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+.lamp {
+  width: clamp(44px, 12vw, 64px); height: clamp(44px, 12vw, 64px);
+  border-radius: 50%;
+  background: #212529;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.lamp.on-red    { background: #ff6b6b; box-shadow: 0 0 30px #ff6b6b; }
+.lamp.on-yellow { background: #ffd43b; box-shadow: 0 0 30px #ffd43b; }
+.lamp.on-green  { background: #51cf66; box-shadow: 0 0 30px #51cf66; }
+#signal-word {
+  z-index: 1;
+  margin-top: 0.7rem;
+  font-size: clamp(1.5rem, 6vw, 2.2rem);
+  font-weight: 900; min-height: 2.6rem;
+  text-shadow: 0 3px 8px rgba(0,0,0,0.4);
+}
+#track-wrap {
+  z-index: 1;
+  width: min(94vw, 700px);
+  flex: 1;
+  display: flex; flex-direction: column; justify-content: center;
+  padding-bottom: 1rem;
+}
+#track {
+  position: relative;
+  height: 92px;
+  background: rgba(255,255,255,0.3);
+  border: 3px dashed rgba(255,255,255,0.8);
+  border-radius: 20px;
+}
+#runner {
+  position: absolute; bottom: 8px; left: 0;
+  font-size: 3.2rem; line-height: 1;
+  transform: translateX(-10%) scaleX(-1);
+  transition: left 0.12s linear;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+}
+#runner.fall { animation: fall 0.8s; }
+@keyframes fall {
+  0%,100% { transform: translateX(-10%) scaleX(-1) rotate(0); }
+  30% { transform: translateX(-10%) scaleX(-1) rotate(80deg) translateY(-8px); }
+  70% { transform: translateX(-10%) scaleX(-1) rotate(80deg) translateY(-8px); }
+}
+#goal-flag {
+  position: absolute; right: 6px; bottom: 10px;
+  font-size: 2.6rem; line-height: 1;
+}
+#tap-btn {
+  z-index: 1;
+  margin: 0.6rem 0 1.6rem;
+  background: linear-gradient(145deg, #ffd93d, #ff9f1c);
+  color: #4a3500; border: none;
+  font-size: clamp(1.3rem, 5vw, 1.7rem); font-weight: 900;
+  padding: 1.1rem 3.4rem; border-radius: 60px;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(255,159,28,0.55);
+  transition: transform 0.1s;
+  touch-action: manipulation;
+}
+#tap-btn:active { transform: scale(0.92); }
+#overlay {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; padding: 1.5rem;
+  background: rgba(20,50,80,0.55);
+  backdrop-filter: blur(6px);
+}
+#overlay.hidden { display: none; }
+.panel {
+  background: rgba(255,255,255,0.16);
+  border: 2px solid rgba(255,255,255,0.45);
+  backdrop-filter: blur(14px);
+  border-radius: 28px; padding: 2rem 2.2rem;
+  max-width: 400px; width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+}
+.panel h2 { font-size: clamp(1.6rem, 6vw, 2.3rem); margin-bottom: 0.6rem; text-shadow: 0 3px 6px rgba(0,0,0,0.3); }
+.panel p { font-size: 1.05rem; line-height: 1.7; margin-bottom: 1.2rem; }
+.panel .big-score { font-size: 2.6rem; font-weight: 900; margin: 0.2rem 0; }
+.panel .best { font-size: 1rem; opacity: 0.9; margin-bottom: 1.2rem; }
+.play-btn {
+  background: linear-gradient(145deg, #ffd93d, #ff9f1c);
+  color: #4a3500; border: none;
+  font-size: 1.4rem; font-weight: 900;
+  padding: 0.8rem 2.4rem; border-radius: 50px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(255,159,28,0.5);
+  transition: transform 0.15s;
+}
+.play-btn:hover { transform: scale(1.06); }
+.play-btn:active { transform: scale(0.95); }
+#back-btn, #audio-btn {
+  position: fixed; top: 0.8rem; z-index: 30;
+  background: rgba(255,255,255,0.3);
+  backdrop-filter: blur(8px);
+  color: white; border: 1px solid rgba(255,255,255,0.55);
+  border-radius: 10px; padding: 0.4rem 0.9rem;
+  cursor: pointer; font-size: 0.9rem; text-decoration: none; font-weight: 700;
+}
+#back-btn { left: 0.8rem; }
+#audio-btn { right: 0.8rem; font-size: 1.1rem; line-height: 1.4; }
+#confetti-layer { position: fixed; inset: 0; pointer-events: none; z-index: 25; display: none; }
+</style>
+</head>
+<body>
+<a href="../" id="back-btn">← もどる</a>
+<button id="audio-btn" aria-label="おと">🔊</button>
+
+<header>
+  <h1>🚦 しんごうダッシュ</h1>
+  <div id="hud">
+    <div class="pill">タイム <span id="timer">0.0</span> びょう</div>
+  </div>
+</header>
+
+<div id="signal">
+  <div class="lamp" id="lamp-red"></div>
+  <div class="lamp" id="lamp-yellow"></div>
+  <div class="lamp" id="lamp-green"></div>
+</div>
+<div id="signal-word"></div>
+
+<div id="track-wrap">
+  <div id="track">
+    <span id="runner">🏃</span>
+    <span id="goal-flag">🏁</span>
+  </div>
+</div>
+
+<button id="tap-btn">タップで はしる！</button>
+
+<div id="overlay">
+  <div class="panel" id="panel">
+    <h2>🚦 しんごうダッシュ</h2>
+    <p>🟢 あおのあいだ ボタンを れんだ！<br>🔴 あかになったら ぴたっと とまる！<br>あかで うごくと ころんじゃうよ 😵<br>ゴールまで なんびょうで いけるかな？</p>
+    <button class="play-btn" id="start-btn">あそぶ！</button>
+  </div>
+</div>
+
+<canvas id="confetti-layer"></canvas>
+
+<script>
+// --- Web Audio SFX ---
+const Sfx = (() => {
+  let ctx;
+  let muted = localStorage.getItem('sfx-muted') === '1';
+  const init = () => {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+  };
+  const play = (freq, dur, type='sine', vol=0.2, delay=0) => {
+    if (muted) return;
+    init();
+    const t = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(t); osc.stop(t + dur + 0.05);
+  };
+  const seq = (notes, type='triangle', vol=0.22) => {
+    let t = 0;
+    notes.forEach(([f, d]) => { play(f, d, type, vol, t); t += d * 0.9; });
+  };
+  return {
+    step:   () => play(440 + Math.random()*80, 0.05, 'triangle', 0.13),
+    green:  () => seq([[659,0.1],[880,0.15]], 'triangle', 0.22),
+    yellow: () => play(740, 0.18, 'triangle', 0.2),
+    red:    () => play(330, 0.3, 'square', 0.16),
+    whistle:() => { play(2200, 0.25, 'square', 0.18); play(2400, 0.25, 'square', 0.12, 0.05); },
+    goal:   () => seq([[523,0.1],[659,0.1],[784,0.1],[1047,0.3]], 'triangle', 0.26),
+    start:  () => seq([[523,0.1],[659,0.1],[784,0.18]], 'triangle', 0.22),
+    record: () => seq([[660,0.09],[880,0.09],[1175,0.09],[1568,0.26]], 'triangle', 0.26),
+    toggle() { muted = !muted; localStorage.setItem('sfx-muted', muted ? '1' : '0'); return muted; },
+    muted: () => muted
+  };
+})();
+(() => {
+  const btn = document.getElementById('audio-btn');
+  btn.textContent = Sfx.muted() ? '🔇' : '🔊';
+  btn.addEventListener('click', () => { btn.textContent = Sfx.toggle() ? '🔇' : '🔊'; });
+})();
+
+// clouds
+for (let i = 0; i < 4; i++) {
+  const c = document.createElement('span');
+  c.className = 'cloud';
+  c.textContent = '☁️';
+  c.style.top = (4 + Math.random() * 22) + 'vh';
+  const d = 26 + Math.random() * 30;
+  c.style.animationDuration = d + 's';
+  c.style.animationDelay = -(Math.random() * d) + 's';
+  document.body.appendChild(c);
+}
+
+// --- Game ---
+const GOAL = 100;
+const STEP = 2.2;        // % per tap
+const PENALTY = 22;      // % lost when caught
+
+const runner = document.getElementById('runner');
+const timerEl = document.getElementById('timer');
+const wordEl = document.getElementById('signal-word');
+const lamps = {
+  red: document.getElementById('lamp-red'),
+  yellow: document.getElementById('lamp-yellow'),
+  green: document.getElementById('lamp-green'),
+};
+const tapBtn = document.getElementById('tap-btn');
+const overlay = document.getElementById('overlay');
+const panel = document.getElementById('panel');
+
+let progress = 0, light = 'red', running = false, falling = false;
+let startTime = 0, lightTimer = null, clockTimer = null;
+
+function setLight(color) {
+  light = color;
+  Object.values(lamps).forEach(l => l.className = 'lamp');
+  lamps[color].classList.add('on-' + color);
+  if (color === 'green') { wordEl.textContent = '🟢 すすめ！'; Sfx.green(); }
+  else if (color === 'yellow') { wordEl.textContent = '🟡 もうすぐ あか！'; Sfx.yellow(); }
+  else { wordEl.textContent = '🔴 とまれ！'; Sfx.red(); }
+}
+
+function scheduleNext() {
+  clearTimeout(lightTimer);
+  if (!running) return;
+  if (light === 'green') {
+    lightTimer = setTimeout(() => { setLight('yellow'); scheduleNext(); }, 1600 + Math.random() * 2200);
+  } else if (light === 'yellow') {
+    lightTimer = setTimeout(() => { setLight('red'); scheduleNext(); }, 700);
+  } else {
+    lightTimer = setTimeout(() => { setLight('green'); scheduleNext(); }, 1100 + Math.random() * 1700);
+  }
+}
+
+function updateRunner() {
+  const track = document.getElementById('track');
+  const max = track.clientWidth - 110;
+  runner.style.left = (progress / GOAL) * max + 'px';
+}
+
+tapBtn.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  if (!running || falling) return;
+  if (light === 'red') return caught();
+  progress = Math.min(GOAL, progress + STEP);
+  Sfx.step();
+  updateRunner();
+  if (progress >= GOAL) reachGoal();
+});
+
+function caught() {
+  falling = true;
+  Sfx.whistle();
+  runner.textContent = '😵';
+  runner.classList.add('fall');
+  wordEl.textContent = '🚨 あかだよ！ ころんじゃった！';
+  progress = Math.max(0, progress - PENALTY);
+  setTimeout(() => {
+    falling = false;
+    runner.textContent = '🏃';
+    runner.classList.remove('fall');
+    updateRunner();
+  }, 850);
+}
+
+function startGame() {
+  progress = 0; running = true; falling = false;
+  runner.textContent = '🏃';
+  overlay.classList.add('hidden');
+  Sfx.start();
+  updateRunner();
+  startTime = performance.now();
+  clockTimer = setInterval(() => {
+    timerEl.textContent = ((performance.now() - startTime) / 1000).toFixed(1);
+  }, 100);
+  setLight('green');
+  scheduleNext();
+}
+
+function reachGoal() {
+  running = false;
+  clearTimeout(lightTimer);
+  clearInterval(clockTimer);
+  const time = (performance.now() - startTime) / 1000;
+  timerEl.textContent = time.toFixed(1);
+  runner.textContent = '🙌';
+  Sfx.goal();
+
+  const best = +(localStorage.getItem('shingo-dash-best') || 0);
+  const isRecord = best === 0 || time < best;
+  if (isRecord) localStorage.setItem('shingo-dash-best', time.toFixed(1));
+
+  let msg;
+  if (time <= 25) msg = 'ちょうそく！ダッシュ めいじん！🏆';
+  else if (time <= 40) msg = 'はやーい！🎉';
+  else msg = 'ゴール おめでとう！';
+
+  panel.innerHTML = `
+    <h2>${isRecord ? '🏆 しんきろく！' : '🏁 ゴール！'}</h2>
+    <div class="big-score">${time.toFixed(1)} びょう</div>
+    <div class="best">ベスト: ${isRecord ? time.toFixed(1) : best} びょう</div>
+    <p>${msg}</p>
+    <button class="play-btn" id="again-btn">もういちど！</button>`;
+  overlay.classList.remove('hidden');
+  document.getElementById('again-btn').addEventListener('click', startGame);
+
+  if (isRecord) { Sfx.record(); }
+  launchConfetti();
+}
+
+document.getElementById('start-btn').addEventListener('click', startGame);
+addEventListener('resize', updateRunner);
+
+function launchConfetti() {
+  const cv = document.getElementById('confetti-layer');
+  cv.style.display = 'block';
+  cv.width = window.innerWidth; cv.height = window.innerHeight;
+  const ctx = cv.getContext('2d');
+  const ps = Array.from({length: 90}, () => ({
+    x: Math.random()*cv.width, y: -20,
+    vx: (Math.random()-0.5)*7, vy: 1+Math.random()*5,
+    r: 6+Math.random()*10, rot: Math.random()*Math.PI*2,
+    vrot: (Math.random()-0.5)*0.2,
+    color: `hsl(${Math.random()*360},90%,60%)`,
+    type: Math.floor(Math.random()*3)
+  }));
+  function draw() {
+    ctx.clearRect(0,0,cv.width,cv.height);
+    let alive = false;
+    ps.forEach(p => {
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.07; p.rot+=p.vrot;
+      if (p.y < cv.height+30) alive = true;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.fillStyle=p.color;
+      if (p.type===0) ctx.fillRect(-p.r/2,-p.r/3,p.r,p.r*0.6);
+      else if (p.type===1) { ctx.beginPath(); ctx.arc(0,0,p.r/2,0,Math.PI*2); ctx.fill(); }
+      else {
+        ctx.beginPath();
+        for (let j=0;j<5;j++) {
+          const a=(j*4*Math.PI/5)-Math.PI/2, b=(j*4*Math.PI/5+2*Math.PI/5)-Math.PI/2;
+          j===0 ? ctx.moveTo(Math.cos(a)*p.r,Math.sin(a)*p.r) : ctx.lineTo(Math.cos(a)*p.r,Math.sin(a)*p.r);
+          ctx.lineTo(Math.cos(b)*p.r*0.4,Math.sin(b)*p.r*0.4);
+        }
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    });
+    if (alive) requestAnimationFrame(draw);
+    else cv.style.display = 'none';
+  }
+  draw();
+}
+</script>
+</body>
+</html>
